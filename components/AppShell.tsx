@@ -118,7 +118,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 )}
                 <div className="sidebar-section-label">{section.section}</div>
 
-                {section.items.filter((item) => !item.roles || (user && item.roles.includes(user.role))).map((item) => {
+                {section.items.filter((item) => !item.roles || !user || item.roles.includes(user.role)).map((item) => {
                   const isActive =
                     pathname === item.href ||
                     (item.href !== "/dashboard" && pathname.startsWith(item.href));
