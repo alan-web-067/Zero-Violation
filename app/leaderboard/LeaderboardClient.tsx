@@ -27,7 +27,7 @@ export default function LeaderboardClient() {
   const router = useRouter();
   const now = useMemo(() => new Date(), []);
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [period,  setPeriod]  = useState<PeriodState>({
     year: now.getFullYear(),
     quarter: Math.floor(now.getMonth() / 3) + 1,

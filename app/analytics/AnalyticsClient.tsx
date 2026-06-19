@@ -40,7 +40,7 @@ export default function AnalyticsClient() {
   const router = useRouter();
   const now = useMemo(() => new Date(), []);
 
-  const [mounted,      setMounted]      = useState(false);
+  const [mounted,      setMounted]      = useState(true);
   const [isAdmin,      setIsAdmin]      = useState(false);
   const [year,         setYear]         = useState(now.getFullYear());
   const [monthlyData,  setMonthlyData]  = useState<MonthPoint[]>([]);

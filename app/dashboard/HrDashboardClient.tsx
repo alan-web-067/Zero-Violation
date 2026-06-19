@@ -66,7 +66,7 @@ export default function HrDashboardClient() {
   const router = useRouter();
   const now = useMemo(() => new Date(), []);
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [period, setPeriod] = useState<MonthYear>({ year: now.getFullYear(), month: now.getMonth() + 1 });
   const [current, setCurrent] = useState<Row[]>([]);
   const [previous, setPrevious] = useState<Row[]>([]);

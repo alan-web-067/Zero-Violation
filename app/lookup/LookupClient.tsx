@@ -7,7 +7,7 @@ import { AUTH_TOKEN_KEY } from "@/lib/apiClient";
 
 export default function LookupClient() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [usdot,   setUsdot]   = useState("");
 
   useEffect(() => {

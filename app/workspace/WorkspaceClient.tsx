@@ -717,7 +717,7 @@ function ApprovalQueuePanel() {
 // =====================================================================
 export default function WorkspaceClient() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [me, setMe] = useState<Me | null>(null);
   const [denied, setDenied] = useState(false);
 

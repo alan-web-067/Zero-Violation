@@ -56,15 +56,22 @@ const NAV: Array<{
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  // Read cached user synchronously so the nav renders on first paint.
+  // The API call below keeps it fresh; on logout ME_KEY is cleared.
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { return JSON.parse(localStorage.getItem(ME_KEY) ?? "null"); } catch { return null; }
+  });
 
   const fetchUser = useCallback(async () => {
     try {
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
       if (!token) { router.replace("/"); return; }
       const res = await apiClient("/api/me");
+      localStorage.setItem(ME_KEY, JSON.stringify(res.user));
       setUser(res.user);
     } catch {
+      localStorage.removeItem(ME_KEY);
       router.replace("/");
     }
   }, [router]);

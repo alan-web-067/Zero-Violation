@@ -64,7 +64,7 @@ function fmtDate(d: string) {
 
 export default function EventsClient() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState("");

@@ -153,7 +153,7 @@ export default function ReportsClient() {
   const router = useRouter();
   const now = useMemo(() => new Date(), []);
 
-  const [mounted,  setMounted]  = useState(false);
+  const [mounted,  setMounted]  = useState(true);
   const [isAdmin,  setIsAdmin]  = useState(false);
   const [period,   setPeriod]   = useState<PeriodState>({
     year: now.getFullYear(),

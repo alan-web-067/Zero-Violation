@@ -107,7 +107,7 @@ export default function MembersClient() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [me, setMe] = useState<Me | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [reports, setReports] = useState<Report[]>([]);

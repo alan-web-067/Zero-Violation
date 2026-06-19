@@ -1,4 +1,3 @@
-import DashboardClient from "./DashboardClient";
-export default function Page() {
-  return <DashboardClient />;
-}
+import dynamic from "next/dynamic";
+const DashboardClient = dynamic(() => import("./DashboardClient"), { ssr: false });
+export default function Page() { return <DashboardClient />; }

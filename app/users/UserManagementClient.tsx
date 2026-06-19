@@ -56,7 +56,7 @@ function RoleBadge({ role }: { role: Role }) {
 
 export default function UserManagementClient() {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserDTO[]>([]);

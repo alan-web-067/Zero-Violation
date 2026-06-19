@@ -23,7 +23,7 @@ export default function AdminClient() {
   const router = useRouter();
   const now = useMemo(() => new Date(), []);
 
-  const [mounted,  setMounted]  = useState(false);
+  const [mounted,  setMounted]  = useState(true);
   const [isAdmin,  setIsAdmin]  = useState(false);
   const [role,     setRole]     = useState<Role | null>(null);
   const [period,   setPeriod]   = useState<PeriodState>({

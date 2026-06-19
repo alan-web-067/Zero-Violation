@@ -75,7 +75,7 @@ export default function DashboardClient() {
   const router = useRouter();
   const now = useMemo(() => new Date(), []);
 
-  const [mounted,  setMounted]  = useState(false);
+  const [mounted,  setMounted]  = useState(true);
   const [isAdmin,  setIsAdmin]  = useState(false);
   // RBAC FEATURE — HR/Accounting get their own dedicated dashboards (people-
   // count / fleet-count stats only, no KPI/violations/leaderboard). `role`

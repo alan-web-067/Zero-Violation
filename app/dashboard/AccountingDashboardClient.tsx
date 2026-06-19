@@ -88,7 +88,7 @@ export default function AccountingDashboardClient() {
   const router = useRouter();
   const now = useMemo(() => new Date(), []);
 
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(true);
   const [period, setPeriod] = useState<MonthYear>({ year: now.getFullYear(), month: now.getMonth() + 1 });
   const [loading, setLoading] = useState(true);
 
