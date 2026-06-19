@@ -27,7 +27,7 @@ export type PeriodState = {
 // pages that load many periods at once (e.g. Analytics' 12-month sweep) don't refetch
 // it dozens of times; invalidate after any block create/edit/rename/status change.
 let blockDefsCache: { defs: BlockDef[]; ts: number } | null = null;
-const BLOCK_DEFS_TTL_MS = 5000;
+const BLOCK_DEFS_TTL_MS = 60_000;
 
 export function invalidateBlockDefsCache() {
   blockDefsCache = null;
@@ -61,9 +61,8 @@ async function fetchMonth(scope: string, y: number, m: number): Promise<Row[] | 
 
 async function loadMonthForRole(y: number, m: number, isAdmin: boolean, defs: BlockDef[]): Promise<Row[]> {
   if (isAdmin) {
-    const d = await fetchMonth("draft", y, m);
+    const [d, p] = await Promise.all([fetchMonth("draft", y, m), fetchMonth("published", y, m)]);
     if (d) return mergeWithBase(d, defs);
-    const p = await fetchMonth("published", y, m);
     if (p) return mergeWithBase(p, defs);
     return mergeWithBase(null, defs);
   } else {

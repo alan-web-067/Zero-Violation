@@ -130,9 +130,11 @@ export default function DashboardClient() {
       // PERMISSIONS FIX — super_admin gets the same draft-scope visibility as admin.
       const admin = isFullAdmin(r as Role);
       setIsAdmin(admin);
-      await loadData(period, admin);
-      await loadTrend(period.year, admin);
-      await loadPrevPeriod(period, admin); // PHASE1 FEATURE
+      await Promise.all([
+        loadData(period, admin),
+        loadTrend(period.year, admin),
+        loadPrevPeriod(period, admin),
+      ]);
     } catch {
       router.replace("/");
     }
@@ -167,36 +169,40 @@ export default function DashboardClient() {
 
   async function handlePeriodChange(next: PeriodState) {
     setPeriod(next);
-    await loadData(next);
-    if (next.year !== period.year) await loadTrend(next.year);
-    await loadPrevPeriod(next); // PHASE1 FEATURE
+    const tasks: Promise<void>[] = [loadData(next), loadPrevPeriod(next)];
+    if (next.year !== period.year) tasks.push(loadTrend(next.year));
+    await Promise.all(tasks);
   }
 
   async function loadTrend(year: number, admin = isAdmin) {
-    const points: TrendPoint[] = [];
-    // PHASE1 FEATURE — collected alongside the trend fetch below (no extra
-    // requests) so streak badges can be derived from this year's per-month
-    // statuses. Only populated when streak badges are enabled.
-    const history: Record<string, (string | undefined)[]> = {};
-    for (let m = 1; m <= 12; m++) {
-      try {
-        const rows    = await loadPeriodRows({ year, month: m, quarter: Math.ceil(m / 3), view: "month" }, admin);
-        const withKpi = sortByKpi(applyKpiToRows(rows));
-        const pt: TrendPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
-        withKpi.forEach((r) => {
-          pt[r.name] = r.kpi.finalKpi;
-          if (ENABLE_STREAK_BADGES) { // PHASE1 FEATURE
-            if (!history[r.name]) history[r.name] = [];
-            history[r.name][m - 1] = r.kpi.status;
-          }
-        });
-        points.push(pt);
-      } catch {
-        points.push({ label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` });
+    const results = await Promise.all(
+      Array.from({ length: 12 }, (_, i) => i + 1).map(async (m) => {
+        try {
+          const rows    = await loadPeriodRows({ year, month: m, quarter: Math.ceil(m / 3), view: "month" }, admin);
+          const withKpi = sortByKpi(applyKpiToRows(rows));
+          const pt: TrendPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
+          const monthHistory: Record<string, string | undefined> = {};
+          withKpi.forEach((r) => {
+            pt[r.name] = r.kpi.finalKpi;
+            if (ENABLE_STREAK_BADGES) monthHistory[r.name] = r.kpi.status;
+          });
+          return { pt, monthHistory, m };
+        } catch {
+          return { pt: { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` } as TrendPoint, monthHistory: {} as Record<string, string | undefined>, m };
+        }
+      })
+    );
+    setTrendData(results.map((r) => r.pt));
+    if (ENABLE_STREAK_BADGES) {
+      const history: Record<string, (string | undefined)[]> = {};
+      for (const { monthHistory, m } of results) {
+        for (const [name, status] of Object.entries(monthHistory)) {
+          if (!history[name]) history[name] = [];
+          history[name][m - 1] = status;
+        }
       }
+      setStatusHistory(history);
     }
-    setTrendData(points);
-    if (ENABLE_STREAK_BADGES) setStatusHistory(history); // PHASE1 FEATURE
   }
 
   const winner      = sorted[0] ?? null;

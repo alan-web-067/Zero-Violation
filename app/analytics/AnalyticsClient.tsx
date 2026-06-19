@@ -85,32 +85,31 @@ export default function AnalyticsClient() {
   async function loadAll(y: number, admin = isAdmin) {
     setLoading(true);
     try {
-      // Monthly trend
-      const monthly: MonthPoint[] = [];
-      for (let m = 1; m <= 12; m++) {
-        const rows = await loadPeriodRows({ year: y, month: m, quarter: Math.ceil(m / 3), view: "month" }, admin);
-        const withKpi = sortByKpi(applyKpiToRows(rows));
-        const pt: MonthPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
-        withKpi.forEach((r) => { pt[r.name] = r.kpi.finalKpi; });
-        monthly.push(pt);
-      }
+      const [monthly, quarterly, curRows] = await Promise.all([
+        Promise.all(
+          Array.from({ length: 12 }, (_, i) => i + 1).map(async (m) => {
+            const rows = await loadPeriodRows({ year: y, month: m, quarter: Math.ceil(m / 3), view: "month" }, admin);
+            const withKpi = sortByKpi(applyKpiToRows(rows));
+            const pt: MonthPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
+            withKpi.forEach((r) => { pt[r.name] = r.kpi.finalKpi; });
+            return pt;
+          })
+        ),
+        Promise.all(
+          Array.from({ length: 4 }, (_, i) => i + 1).map(async (q) => {
+            const rows = await loadPeriodRows({ year: y, month: (q - 1) * 3 + 1, quarter: q, view: "quarter" }, admin);
+            const withKpi = sortByKpi(applyKpiToRows(rows));
+            const pt: QuarterPoint = { label: `Q${q}` };
+            withKpi.forEach((r) => { pt[r.name] = r.kpi.finalKpi; });
+            return pt;
+          })
+        ),
+        loadPeriodRows({
+          year: y, month: now.getMonth() + 1, quarter: Math.floor(now.getMonth() / 3) + 1, view: "month",
+        }, admin),
+      ]);
       setMonthlyData(monthly);
-
-      // Quarterly
-      const quarterly: QuarterPoint[] = [];
-      for (let q = 1; q <= 4; q++) {
-        const rows = await loadPeriodRows({ year: y, month: (q - 1) * 3 + 1, quarter: q, view: "quarter" }, admin);
-        const withKpi = sortByKpi(applyKpiToRows(rows));
-        const pt: QuarterPoint = { label: `Q${q}` };
-        withKpi.forEach((r) => { pt[r.name] = r.kpi.finalKpi; });
-        quarterly.push(pt);
-      }
       setQuarterlyData(quarterly);
-
-      // Current month snapshot
-      const curRows = await loadPeriodRows({
-        year: y, month: now.getMonth() + 1, quarter: Math.floor(now.getMonth() / 3) + 1, view: "month",
-      }, admin);
       setBlockSnap(sortByKpi(applyKpiToRows(curRows)));
     } finally {
       setLoading(false);
