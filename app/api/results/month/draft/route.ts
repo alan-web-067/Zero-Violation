@@ -1,0 +1,34 @@
+// app/api/results/month/draft/route.ts
+export const runtime = "nodejs";
+
+import { NextRequest, NextResponse } from "next/server";
+import { initDb, run } from "@/lib/db";
+import { nowIso, requireAdmin, requireAuth } from "@/lib/auth";
+
+export async function POST(req: NextRequest) {
+  await initDb();
+  try {
+    const user = requireAuth(req);
+    requireAdmin(user);
+
+    const body = await req.json().catch(() => ({}));
+    const { year, month, data } = body || {};
+    if (!year || !month || !data) return NextResponse.json({ error: "Missing payload" }, { status: 400 });
+
+    const updated_at = nowIso();
+    const json = JSON.stringify(data);
+
+    await run(
+      `INSERT INTO month_results(scope,year,month,data_json,updated_at)
+       VALUES('draft',?,?,?,?)
+       ON CONFLICT(scope,year,month)
+       DO UPDATE SET data_json=excluded.data_json, updated_at=excluded.updated_at`,
+      [Number(year), Number(month), json, updated_at]
+    );
+
+    return NextResponse.json({ ok: true, updated_at });
+  } catch (e: any) {
+    const status = e.message === "Admin only" ? 403 : 401;
+    return NextResponse.json({ error: e.message || "Error" }, { status });
+  }
+}

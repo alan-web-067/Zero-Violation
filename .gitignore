@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Local SQLite database (dev only — not used in production)
+data.sqlite
+data.sqlite-wal
+data.sqlite-shm
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Uploaded files (dev only — production uses Vercel Blob)
+public/uploads/
