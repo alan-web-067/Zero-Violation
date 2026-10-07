@@ -103,91 +103,6 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
     },
   },
   {
-    match: "/members",
-    help: {
-      title: "Members",
-      intro:
-        "The Members page is the shared employee registry used by both HR and Accounting.",
-      sections: [
-        {
-          heading: "HR — Managing employees",
-          body: "HR can add, edit, and delete employee records. Click '+ Add Member' to create a new employee, fill in their details, assign them to a block, and optionally upload a profile photo.",
-        },
-        {
-          heading: "Accounting — Payroll management",
-          body: "Accounting can view all employees and click 'Payroll' on any row to enter salary, payment type, bonus, deductions, and notes for the selected period.",
-        },
-        {
-          heading: "Monthly Members Report",
-          body: "HR submits a monthly snapshot of member data for approval. The Main Account (admin) can approve or reject it. Rejected reports can be re-submitted after corrections.",
-        },
-      ],
-    },
-    roleHelp: {
-      hr: {
-        title: "Members — HR",
-        intro:
-          "On this page you manage all employee records for the company. Add employees, assign them to blocks, upload photos, and submit monthly reports for approval.",
-        sections: [
-          {
-            heading: "Adding an employee",
-            list: [
-              "Click '+ Add Member' in the top-right corner.",
-              "Enter first name, last name, date of birth, date first joined ALGO GROUP, employee ID, and their assigned block.",
-              "Optionally upload a profile photo (PNG, JPG, or WebP — max 3 MB).",
-              "Click 'Add Member' to save. No approval is needed — the employee is saved immediately.",
-            ],
-          },
-          {
-            heading: "Editing and deleting employees",
-            body: "Click the pencil icon on any row to edit that employee's information. Click the trash icon to remove them. Both actions take effect immediately.",
-          },
-          {
-            heading: "Moving employees between blocks",
-            body: "Open the edit form for any employee and change the 'Assigned Block' dropdown. Save to move them to the new block — they will appear under the new block accordion on the next load.",
-          },
-          {
-            heading: "Monthly Members Report",
-            body: "At the bottom of the Members tab, select a year and month, then click 'Submit Monthly Members'. The report is sent to the Main Account for approval. You can check its status (Pending, Approved, or Rejected) in the Reports tab. If rejected, fix any issues and click 'Re-Submit'.",
-          },
-        ],
-      },
-      accounting: {
-        title: "Members — Accounting",
-        intro:
-          "On this page you can view all employees created by HR, search by name or ID, and manage their payroll for any period.",
-        sections: [
-          {
-            heading: "Searching for an employee",
-            list: [
-              "Type a first name, last name, or employee ID into the search box.",
-              "Results appear instantly as a flat list — no need to browse blocks.",
-              "If nothing matches, you will see 'No employee found. Try a different name or ID.'",
-            ],
-          },
-          {
-            heading: "Opening payroll",
-            body: "Click the 'Payroll' button on any employee row to open the payroll form. Select the correct year and month with the period selectors before opening payroll to pre-load any existing entry for that period.",
-          },
-          {
-            heading: "Payroll fields",
-            list: [
-              "Salary — the base pay amount for the period.",
-              "Payment Type — Hourly, Salary, Contract, or Per Diem.",
-              "Bonus — any bonus amount for the period.",
-              "Deduction — any deduction amount for the period.",
-              "Notes — free-form notes about this payroll entry.",
-            ],
-          },
-          {
-            heading: "What Accounting cannot change",
-            body: "Employee name, date of birth, date joined, employee ID, and block assignment are all HR-managed fields. Accounting can only view them, not edit them.",
-          },
-        ],
-      },
-    },
-  },
-  {
     match: "/events",
     help: {
       title: "Upcoming Events",
@@ -317,14 +232,6 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
       ],
     },
   },
-  {
-    match: "/lookup",
-    help: {
-      title: "Company Lookup",
-      intro: "Company Lookup is coming soon.",
-      sections: [],
-    },
-  },
 ];
 
 const DEFAULT_HELP: PageHelp = {
@@ -333,7 +240,7 @@ const DEFAULT_HELP: PageHelp = {
   sections: [
     {
       heading: "Getting around",
-      body: "Use the sidebar to jump between Dashboard, Leaderboard, Analytics, Reports, Admin / Edit, and Company Lookup. Open this help panel from any page for guidance on what you're looking at.",
+      body: "Use the sidebar to jump between Dashboard, Leaderboard, Analytics, Reports, How Scoring Works, and Admin / Edit. Open this help panel from any page for guidance on what you're looking at.",
     },
   ],
 };

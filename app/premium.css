@@ -276,3 +276,11 @@ table.data-table td { padding-left: 10px; padding-right: 10px; }
 /* Hurt / angry speech bubbles keep their colours but match the rounded premium look */
 .ll-root .ll-bubble { box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.45); }
 .ll-root .ll-glow-wrap { margin: 22px 0 18px; }
+/* Robot stage: a full white rounded square (overrides the circle above). */
+.ll-root .ll-glow-wrap::before {
+  inset: -14%;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fcf9 100%);
+  box-shadow: 0 0 0 1px rgba(242, 214, 139, 0.55), 0 24px 50px -20px rgba(0, 0, 0, 0.55), 0 0 70px 4px rgba(230, 190, 90, 0.16);
+}
+.ll-root .ll-glow-wrap { margin: 34px 0 30px; }

@@ -195,9 +195,6 @@ function websiteAnswer(message: string, facts: Facts): string | null {
   if (has(m, "analytics page", "explain analytics", "what is analytics")) {
     return "Analytics shows each block's KPI month by month and by quarter, plus the best and worst block of every month.";
   }
-  if (has(m, "company lookup", "lookup page", "company search")) {
-    return "Company Lookup is coming soon.";
-  }
 
   return null;
 }
