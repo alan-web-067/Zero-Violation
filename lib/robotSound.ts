@@ -83,13 +83,18 @@ function bonk(ac: AudioContext, t: number) {
   noiseBurst(ac, t, 0.06, 0.12, "lowpass", 4000);
 }
 
-// Three shaky little sobs ("huh-huh-huh") with a breath on each.
+// Three soft sobs ("huh-huh-huh"): short falling notes with a breath on each.
 function sobs(ac: AudioContext, t: number) {
   for (let i = 0; i < 3; i++) {
-    const s = t + i * 0.2;
-    tone(ac, "triangle", 560 - i * 30, 380, s, 0.15, 0.16, 28);
-    noiseBurst(ac, s, 0.12, 0.05, "bandpass", 1400, true);
+    const s = t + i * 0.22;
+    tone(ac, "sine", 520 - i * 25, 400 - i * 20, s, 0.16, 0.12);
+    noiseBurst(ac, s, 0.13, 0.05, "bandpass", 1300, true);
   }
+}
+
+// Bright little "ding-ding-ding" before a happy line.
+function chime(ac: AudioContext, t: number) {
+  [784, 988, 1319].forEach((f, i) => tone(ac, "sine", f, f, t + i * 0.09, 0.22, 0.09));
 }
 
 // A wet sniffle: two short rising breaths of filtered noise.
@@ -106,20 +111,21 @@ function pickVoice(): SpeechSynthesisVoice | null {
   return english.find((v) => /google us english|samantha|zira|aria|jenny/i.test(v.name)) ?? english[0] ?? null;
 }
 
+// Pitch stays close to the voice's natural range (≈0.8–1.3): pushed further,
+// browser voices start to warble and sound shaky. Speed carries most of the mood.
 const VOICE: Record<Mood, { pitch: number; rate: number }> = {
-  happy:   { pitch: 1.6,  rate: 1.08 },
-  sad:     { pitch: 1.7,  rate: 0.85 },
-  worried: { pitch: 1.45, rate: 1.18 },
-  angry:   { pitch: 0.85, rate: 1.0 },
-  furious: { pitch: 0.6,  rate: 0.92 },
-  excited: { pitch: 1.95, rate: 1.2 },
+  happy:   { pitch: 1.25, rate: 1.08 },
+  sad:     { pitch: 1.15, rate: 0.82 },
+  worried: { pitch: 1.2,  rate: 1.15 },
+  angry:   { pitch: 0.9,  rate: 1.0 },
+  furious: { pitch: 0.82, rate: 0.92 },
+  excited: { pitch: 1.3,  rate: 1.15 },
 };
 
 // Drop the leading emoji and spell out short forms so the voice reads the bubble naturally.
 function speakable(text: string): string {
   return text
     .replace(/^[^\p{L}\p{N}]+/u, "")
-    .replace(/\bSIU+\b/g, "Siuuuuu")
     .replace(/\.{3}/g, ", ")
     .replace(/\bKPI\b/g, "K.P.I.")
     .trim();
@@ -160,7 +166,7 @@ function speak(text: string, mood: Mood, delayMs: number, onDone?: () => void): 
     let said = line;
     if (mood === "sad") {
       const first = line.split(/\s+/)[0].replace(/[^A-Za-z']/g, "");
-      if (first.length > 2) said = `${first}… ${line.charAt(0).toLowerCase()}${line.slice(1)}`;
+      if (first.length > 2) said = `${first}… ${line}`;
     }
     const u = utter(said, pitch, rate, voice);
     if (onDone) u.onend = () => { if (id === talkId) onDone(); };
@@ -175,7 +181,9 @@ const spokenTips = new Set<string>();
 export function sayLine(text: string) {
   if (!interacted || !robotSoundEnabled() || spokenTips.has(text)) return;
   spokenTips.add(text);
-  speak(text, "happy", 0);
+  const ac = audio();
+  if (ac) chime(ac, ac.currentTime + 0.02);
+  speak(text, "happy", ac ? 350 : 0);
 }
 
 // Hit: bonk, then the bubble line in the bubble's mood (crying gets sobs before and a sniffle after).

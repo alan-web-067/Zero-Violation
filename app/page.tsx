@@ -22,12 +22,11 @@ const HIT_MESSAGES = [
   { text: "🥺 Why would you do that?", img: "/alox/alox-sad.png", mood: "sad" as Mood },
   { text: "💔 Safety robots have feelings too.", img: "/alox/alox-hurt.png", mood: "sad" as Mood },
   { text: "😢 My circuits are hurt.", img: "/alox/alox-xeyes.png", mood: "sad" as Mood },
-  { text: "⚠️ Unsafe operation: hitting company mascot.", img: "/alox/alox-warning.png", mood: "worried" as Mood },
-  { text: "📈 I can make your KPI worse if you keep doing that!", img: "/alox/alox-alert.png", mood: "angry" as Mood },
-  { text: "😡 One more click and I will raise your points.", img: "/alox/alox-angry.png", mood: "angry" as Mood },
-  { text: "🤖 I'm not saying I'll increase KPI... but I'm thinking about it.", img: "/alox/alox-rage.png", mood: "furious" as Mood },
-  { text: "🚨 Robot abuse violation detected.", img: "/alox/alox-robot-abuse.png", mood: "furious" as Mood },
-  { text: "⚽ SIUUU! Okay, I'm calm now.", img: "/alox/alox-thumbsup.png", mood: "excited" as Mood },
+  { text: "⚠️ Unsafe operation: hitting company mascot.", img: "/alox/alox-warning.png", mood: "sad" as Mood },
+  { text: "📈 I can make your KPI worse if you keep doing that!", img: "/alox/alox-alert.png", mood: "sad" as Mood },
+  { text: "😡 One more click and I will raise your points.", img: "/alox/alox-angry.png", mood: "sad" as Mood },
+  { text: "🤖 I'm not saying I'll increase KPI... but I'm thinking about it.", img: "/alox/alox-rage.png", mood: "sad" as Mood },
+  { text: "🚨 Robot abuse violation detected.", img: "/alox/alox-robot-abuse.png", mood: "sad" as Mood },
 ];
 
 /* Deterministic particle positions for the hero panel */
