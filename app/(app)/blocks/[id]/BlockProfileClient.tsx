@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AUTH_TOKEN_KEY, getMe } from "@/lib/apiClient";
@@ -95,6 +95,9 @@ export default function BlockProfileClient() {
   const avgRank = withData.length
     ? withData.reduce((s, r) => s + (r.rank ?? 0), 0) / withData.length
     : null;
+
+  const goal = block?.targetKpi ?? null;
+  const onTarget = goal === null ? 0 : withData.filter((r) => r.row!.kpi.finalKpi <= goal).length;
 
   const chartData = results.map((r, i) => ({
     label: MONTHS[i].name.slice(0, 3),
@@ -197,11 +200,19 @@ export default function BlockProfileClient() {
                   <Tooltip formatter={(v) => (typeof v === "number" ? v.toFixed(2) : v)} />
                   <Legend />
                   <Line type="monotone" dataKey={block?.name ?? "This block"} stroke="#059669" strokeWidth={2.5} dot={{ r: 4 }} connectNulls />
+                  {goal !== null && (
+                    <ReferenceLine y={goal} stroke="#d4a017" strokeDasharray="6 4" label={{ value: `Goal ≤ ${goal}`, position: "insideTopRight", fill: "#a16207", fontSize: 11 }} />
+                  )}
                   {compareId && <Line type="monotone" dataKey={compareName} stroke="#d4a017" strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls />}
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>Lower = better. Months with no data are skipped.</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6 }}>
+              Lower = better. Months with no data are skipped.
+              {goal !== null && withData.length > 0 && (
+                <> · <strong style={{ color: onTarget === withData.length ? "#047857" : "#a16207" }}>🎯 Goal ≤ {goal.toFixed(2)} reached in {onTarget} of {withData.length} months</strong></>
+              )}
+            </div>
           </div>
         </div>
 

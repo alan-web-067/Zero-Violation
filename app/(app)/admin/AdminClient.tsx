@@ -9,6 +9,9 @@ import DraftBadge from "@/components/DraftBadge";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
 import RenameBlockDialog from "@/components/RenameBlockDialog";
+import GoalsDialog from "@/components/GoalsDialog";
+import PasteImportDialog from "@/components/PasteImportDialog";
+import type { PasteField } from "@/lib/pasteImport";
 import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
   Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, RowWithKpi,
@@ -70,6 +73,8 @@ export default function AdminClient() {
   const [toast,     setToast]     = useState("");
   const [unpublished, setUnpublished] = useState(false);
   const [addOpen,   setAddOpen]   = useState(false);
+  const [goalsOpen, setGoalsOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
   const [confirmChanges, setConfirmChanges] = useState<string[] | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -180,6 +185,19 @@ export default function AdminClient() {
     });
   }
 
+  // Numbers pasted from Excel go into the edit grid; nothing is saved until Save Draft / Publish.
+  function applyPasted(updates: Array<{ blockId: string; values: Partial<Record<PasteField, number>> }>) {
+    setDraftRows((prev) => {
+      const copy = structuredClone(prev ?? baseRows);
+      for (const u of updates) {
+        const item = copy.find((x) => String(x.id) === u.blockId);
+        if (item) Object.assign(item, u.values);
+      }
+      return copy;
+    });
+    setToast(`Pasted numbers for ${updates.length} block${updates.length === 1 ? "" : "s"} — check them, then Save Draft or Publish`);
+  }
+
   async function saveDraft() {
     if (hasRowErrors) { setToast("Fix invalid numbers before saving ❌"); return; }
     setSaving(true);
@@ -287,6 +305,11 @@ export default function AdminClient() {
         <div className="page-header-right" style={{ gap: 8 }}>
           <DraftBadge show={unpublished && !loading && !editMode} />
           {isAdmin && (
+            <button className="btn btn-secondary btn-sm" onClick={() => setGoalsOpen(true)} disabled={loading || saving}>
+              🎯 Goals
+            </button>
+          )}
+          {isAdmin && (
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => setAddOpen(true)}
@@ -328,6 +351,7 @@ export default function AdminClient() {
                   <p>✏️ Edit mode active — modify numbers below, then Save Draft or Publish</p>
                 )}
                 <div className="edit-mode-actions">
+                  <button className="btn btn-secondary btn-sm" onClick={() => setPasteOpen(true)} disabled={saving}>📋 Paste from Excel</button>
                   <button className="btn btn-secondary btn-sm" onClick={cancelEdit} disabled={saving}>Cancel</button>
                   <button className="btn btn-secondary btn-sm" onClick={saveDraft} disabled={saving || hasRowErrors}>
                     {saving ? "Saving…" : "Save Draft"}
@@ -569,6 +593,19 @@ export default function AdminClient() {
           setToast(`Block renamed to "${name}" ✅`);
           await loadData(period);
         }}
+      />
+
+      <GoalsDialog
+        open={goalsOpen}
+        onOpenChange={setGoalsOpen}
+        onSaved={(n) => setToast(n ? `Saved ${n} goal${n === 1 ? "" : "s"} 🎯` : "No goals changed")}
+      />
+
+      <PasteImportDialog
+        open={pasteOpen}
+        onOpenChange={setPasteOpen}
+        blocks={activeRows}
+        onApply={applyPasted}
       />
 
       <AddBlockDialog

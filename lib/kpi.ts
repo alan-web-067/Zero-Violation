@@ -44,6 +44,7 @@ export type BlockDef = {
   notes: string;
   status: "active" | "inactive";
   sortOrder: number;
+  targetKpi?: number | null;   // monthly goal: Final KPI at or below this (quarters ×3)
 };
 
 export const MONTHS = [
@@ -318,4 +319,11 @@ export function monthRowsError(data: unknown): string | null {
     }
   }
   return null;
+}
+
+// Did a block reach its goal? null = no goal set, or no data to judge.
+// The goal is per month, so a quarter's goal is three times as large (like the status limits).
+export function goalMet(row: RowWithKpi, target: number | null | undefined): boolean | null {
+  if (target === null || target === undefined || row.kpi.noData) return null;
+  return row.kpi.finalKpi <= target * Number(row.periodMonths || 1);
 }

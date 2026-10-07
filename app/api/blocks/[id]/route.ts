@@ -14,6 +14,7 @@ type BlockRow = {
   notes: string;
   status: "active" | "inactive";
   sort_order: number;
+  target_kpi: number | null;
 };
 
 function toApi(b: BlockRow) {
@@ -26,6 +27,7 @@ function toApi(b: BlockRow) {
     notes: b.notes,
     status: b.status,
     sortOrder: b.sort_order,
+    targetKpi: b.target_kpi ?? null,
   };
 }
 
@@ -83,6 +85,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       if (notes.length > 1000) return NextResponse.json({ error: "Notes are too long (max 1000)" }, { status: 400 });
       fields.push("notes = ?");
       params.push(notes);
+    }
+
+    if (body?.targetKpi !== undefined) {
+      // Empty / null clears the goal.
+      if (body.targetKpi === null || body.targetKpi === "") {
+        fields.push("target_kpi = NULL");
+      } else {
+        const v = Number(body.targetKpi);
+        if (Number.isNaN(v) || v < 0 || v > 1000) return NextResponse.json({ error: "Goal must be a number between 0 and 1000" }, { status: 400 });
+        fields.push("target_kpi = ?");
+        params.push(Math.round(v * 100) / 100);
+      }
     }
 
     if (body?.status !== undefined) {

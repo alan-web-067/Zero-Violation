@@ -149,6 +149,14 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
           body: "The form checks your entries before saving — values must be valid, non-negative numbers, and required fields must be filled in. If something doesn't add up, you'll see an inline message explaining what to fix.",
         },
         {
+          heading: "📋 Paste from Excel",
+          body: "In edit mode, click Paste from Excel. Copy the rows in Excel or Google Sheets (Block, Team members, Trucks, Clean inspections, Total inspections, Violation points) and paste them, or open a CSV file. Check the preview, click Apply, then Save Draft or Publish.",
+        },
+        {
+          heading: "🎯 Goals",
+          body: "Click Goals to set a target Final KPI for each block (for example ≤ 2). Blocks at or below their goal get a green ✓ on the Dashboard, Leaderboard and their profile; quarters use three times the monthly goal.",
+        },
+        {
           heading: "Total Inspections cannot be less than Clean Inspections",
           body: "Clean inspections are a subset of total inspections, so Total Inspections must always be greater than or equal to Clean Inspections. The system blocks saving until this is corrected.",
         },

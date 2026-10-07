@@ -42,7 +42,7 @@ async function all<T = unknown>(sql: string, params: unknown[] = []) {
 // Every serverless cold start used to replay ~25 sequential migration queries
 // against remote Turso before answering. Now a single version check gates them.
 // BUMP THIS whenever you add/alter a table or seed below, so it runs once more.
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 let _initPromise: Promise<void> | null = null;
 
@@ -264,6 +264,9 @@ async function migrate() {
       updated_at TEXT NOT NULL
     )
   `);
+
+  // Monthly goal per block: target Final KPI (NULL = no goal).
+  try { await run(`ALTER TABLE blocks ADD COLUMN target_kpi REAL`); } catch { /* exists */ }
 
   // Seed the registry from the original fixed block list if empty.
   const blockCount = await get<{ c: number }>(`SELECT COUNT(*) as c FROM blocks`);

@@ -14,6 +14,7 @@ type BlockRow = {
   notes: string;
   status: "active" | "inactive";
   sort_order: number;
+  target_kpi: number | null;
 };
 
 function toApi(b: BlockRow) {
@@ -26,6 +27,7 @@ function toApi(b: BlockRow) {
     notes: b.notes,
     status: b.status,
     sortOrder: b.sort_order,
+    targetKpi: b.target_kpi ?? null,
   };
 }
 

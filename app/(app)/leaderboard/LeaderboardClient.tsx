@@ -7,7 +7,8 @@ import DraftBadge from "@/components/DraftBadge";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, RowWithKpi } from "@/lib/kpi";
-import { loadPeriodRowsWithStatus } from "@/lib/useKpiData";
+import { loadPeriodRowsWithStatus, fetchBlockDefs } from "@/lib/useKpiData";
+import GoalChip from "@/components/GoalChip";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 
@@ -42,6 +43,7 @@ export default function LeaderboardClient() {
   const [unpublished, setUnpublished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [goals, setGoals] = useState<Record<string, number | null>>({});
 
   useEffect(() => {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
@@ -72,7 +74,8 @@ export default function LeaderboardClient() {
   async function loadData(p: PeriodState, admin = isAdmin) {
     setLoading(true);
     try {
-      const { rows, unpublished } = await loadPeriodRowsWithStatus(p, admin);
+      const [{ rows, unpublished }, defs] = await Promise.all([loadPeriodRowsWithStatus(p, admin), fetchBlockDefs()]);
+      setGoals(Object.fromEntries(defs.map((d) => [d.id, d.targetKpi ?? null])));
       setUnpublished(unpublished);
       setSorted(sortByKpi(applyKpiToRows(rows)));
     } finally {
@@ -158,6 +161,7 @@ export default function LeaderboardClient() {
                       <th className="num">Total Ins.</th>
                       <th className="num">Discounts</th>
                       <th className="num">Final KPI</th>
+                      {Object.values(goals).some((g) => g !== null) && <th>Goal</th>}
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -214,6 +218,7 @@ export default function LeaderboardClient() {
                             : "—"}
                         </td>
                         <td className="num"><strong style={{ fontSize: 14 }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>
+                        {Object.values(goals).some((g) => g !== null) && <td><GoalChip row={r} target={goals[r.id]} /></td>}
                         <td><span className={BADGE_CLASS[r.kpi.status]}>{r.kpi.status}</span></td>
                         <td style={{ whiteSpace: "nowrap" }}>
                           <RankBadge rank={r.kpi.noData ? 0 : idx + 1} total={ranked.length} />

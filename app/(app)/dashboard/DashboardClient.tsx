@@ -18,7 +18,8 @@ import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
   applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, MONTHS, RowWithKpi,
 } from "@/lib/kpi";
-import { loadPeriodRows, loadPeriodRowsWithStatus, loadYearMonthRows } from "@/lib/useKpiData";
+import { loadPeriodRows, loadPeriodRowsWithStatus, loadYearMonthRows, fetchBlockDefs } from "@/lib/useKpiData";
+import GoalChip from "@/components/GoalChip";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 import { askAlox } from "@/components/AloxChat";
@@ -93,6 +94,7 @@ export default function DashboardClient() {
     view: "month",
   });
   const [sorted,    setSorted]    = useState<RowWithKpi[]>([]);
+  const [goals,     setGoals]     = useState<Record<string, number | null>>({});
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [toast,     setToast]     = useState("");
@@ -166,7 +168,8 @@ export default function DashboardClient() {
   async function loadData(p: PeriodState, admin = isAdmin) {
     setLoading(true);
     try {
-      const { rows, unpublished } = await loadPeriodRowsWithStatus(p, admin);
+      const [{ rows, unpublished }, defs] = await Promise.all([loadPeriodRowsWithStatus(p, admin), fetchBlockDefs()]);
+      setGoals(Object.fromEntries(defs.map((d) => [d.id, d.targetKpi ?? null])));
       setUnpublished(unpublished);
       setSorted(sortByKpi(applyKpiToRows(rows)));
     } finally {
@@ -630,6 +633,31 @@ export default function DashboardClient() {
             </div>
           </div>
         </div>
+
+        {/* Goals — which blocks reached their monthly target */}
+        {!loading && (() => {
+          const withGoal = ranked.filter((r) => goals[r.id] != null);
+          if (!withGoal.length) return null;
+          const met = withGoal.filter((r) => r.kpi.finalKpi <= goals[r.id]! * Number(r.periodMonths || 1)).length;
+          return (
+            <div className="card" style={{ marginBottom: 14 }}>
+              <div className="card-header">
+                <h2 className="card-title">🎯 Goals — {met} of {withGoal.length} on target</h2>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Target Final KPI per block · lower is better</span>
+              </div>
+              <div className="card-body">
+                <div className="goals-grid">
+                  {withGoal.map((r) => (
+                    <Link key={r.id} href={`/blocks/${encodeURIComponent(r.id)}`} className="goal-card">
+                      <span><strong>{r.name}</strong><small>Final KPI {r.kpi.finalKpi.toFixed(2)}</small></span>
+                      <GoalChip row={r} target={goals[r.id]} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Biggest movers — rank change vs the previous period */}
         {!loading && movers.up.length + movers.down.length > 0 && (
