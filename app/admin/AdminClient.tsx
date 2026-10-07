@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Pencil, X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import AppShell from "@/components/AppShell";
+import DraftBadge from "@/components/DraftBadge";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
 import RenameBlockDialog from "@/components/RenameBlockDialog";
@@ -12,7 +13,7 @@ import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
   Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, RowWithKpi,
 } from "@/lib/kpi";
-import { loadPeriodRows } from "@/lib/useKpiData";
+import { loadPeriodRowsWithStatus } from "@/lib/useKpiData";
 import { isFullAdmin, roleLabel } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 
@@ -67,6 +68,7 @@ export default function AdminClient() {
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
   const [toast,     setToast]     = useState("");
+  const [unpublished, setUnpublished] = useState(false);
   const [addOpen,   setAddOpen]   = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
   const [confirmChanges, setConfirmChanges] = useState<string[] | null>(null);
@@ -133,7 +135,8 @@ export default function AdminClient() {
     setLoading(true);
     if (admin) loadHistory(p);
     try {
-      const rows = await loadPeriodRows(p, admin);
+      const { rows, unpublished } = await loadPeriodRowsWithStatus(p, admin);
+      setUnpublished(unpublished);
       setBaseRows(rows);
       setDraftRows(null);
       setEditMode(false);
@@ -179,6 +182,7 @@ export default function AdminClient() {
       });
       // Saved — Cancel should now return to these numbers, not the pre-edit ones.
       setBaseRows(structuredClone(draftRows ?? baseRows));
+      setUnpublished(true);
       setToast("Draft saved ✅");
     } catch (err) {
       setToast(`Error saving draft ❌ ${err instanceof Error ? err.message : ""}`);
@@ -230,6 +234,7 @@ export default function AdminClient() {
       setBaseRows(structuredClone(draftRows ?? baseRows));
       setDraftRows(null);
       setEditMode(false);
+      setUnpublished(false);
       setToast("Published ✅ Viewers can now see this data");
       loadHistory(period);
     } catch (err) {
@@ -269,6 +274,7 @@ export default function AdminClient() {
           <h1>Admin / Edit</h1>
         </div>
         <div className="page-header-right" style={{ gap: 8 }}>
+          <DraftBadge show={unpublished && !loading && !editMode} />
           {isAdmin && (
             <button
               className="btn btn-secondary btn-sm"

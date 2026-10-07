@@ -8,6 +8,7 @@ import {
   Tooltip, ResponsiveContainer, Legend, ReferenceLine,
 } from "recharts";
 import AppShell from "@/components/AppShell";
+import DraftBadge from "@/components/DraftBadge";
 import HrDashboardClient from "./HrDashboardClient";
 import AccountingDashboardClient from "./AccountingDashboardClient";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
@@ -15,7 +16,7 @@ import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
   applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, MONTHS, RowWithKpi,
 } from "@/lib/kpi";
-import { loadPeriodRows, loadYearMonthRows } from "@/lib/useKpiData";
+import { loadPeriodRows, loadPeriodRowsWithStatus, loadYearMonthRows } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 import { askAlox } from "@/components/AloxChat";
@@ -93,6 +94,7 @@ export default function DashboardClient() {
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [loading,   setLoading]   = useState(true);
   const [toast,     setToast]     = useState("");
+  const [unpublished, setUnpublished] = useState(false);
 
   // PHASE1 FEATURE — previous-period rows, used only for comparison widgets
   // (delta chips, Most Improved, Alox Insights). Empty array = no comparison
@@ -162,7 +164,8 @@ export default function DashboardClient() {
   async function loadData(p: PeriodState, admin = isAdmin) {
     setLoading(true);
     try {
-      const rows = await loadPeriodRows(p, admin);
+      const { rows, unpublished } = await loadPeriodRowsWithStatus(p, admin);
+      setUnpublished(unpublished);
       setSorted(sortByKpi(applyKpiToRows(rows)));
     } finally {
       setLoading(false);
@@ -374,7 +377,8 @@ export default function DashboardClient() {
           <span style={{ fontSize: 18 }}>🏠</span>
           <h1>Dashboard</h1>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ gap: 8 }}>
+          <DraftBadge show={unpublished && !loading} />
           {isAdmin && (
             <span className="badge" style={{ background: "#dcfce7", color: "#065f46" }}>Admin</span>
           )}

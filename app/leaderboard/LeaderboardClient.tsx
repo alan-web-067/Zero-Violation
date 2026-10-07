@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import DraftBadge from "@/components/DraftBadge";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, RowWithKpi } from "@/lib/kpi";
-import { loadPeriodRows } from "@/lib/useKpiData";
+import { loadPeriodRowsWithStatus } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 
@@ -38,6 +39,7 @@ export default function LeaderboardClient() {
   });
   const [sorted,  setSorted]  = useState<RowWithKpi[]>([]);
   const ranked = rankedOnly(sorted);
+  const [unpublished, setUnpublished] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -70,7 +72,8 @@ export default function LeaderboardClient() {
   async function loadData(p: PeriodState, admin = isAdmin) {
     setLoading(true);
     try {
-      const rows = await loadPeriodRows(p, admin);
+      const { rows, unpublished } = await loadPeriodRowsWithStatus(p, admin);
+      setUnpublished(unpublished);
       setSorted(sortByKpi(applyKpiToRows(rows)));
     } finally {
       setLoading(false);
@@ -91,7 +94,8 @@ export default function LeaderboardClient() {
           <span style={{ fontSize: 18 }}>🏆</span>
           <h1>Leaderboard</h1>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ gap: 8 }}>
+          <DraftBadge show={unpublished && !loading} />
           <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
             Sorted by Final KPI · Lowest = Best
           </span>

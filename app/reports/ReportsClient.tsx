@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, MoreVertical } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import DraftBadge from "@/components/DraftBadge";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
 import RenameBlockDialog from "@/components/RenameBlockDialog";
 import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { applyKpiToRows, sortByKpi, rankedOnly, fmtPct, MONTHS, Row } from "@/lib/kpi";
-import { loadPeriodRows, fetchBlockDefs, invalidateBlockDefsCache, BlockDef } from "@/lib/useKpiData";
+import { loadPeriodRowsWithStatus, fetchBlockDefs, invalidateBlockDefsCache, BlockDef } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 
@@ -168,6 +169,7 @@ export default function ReportsClient() {
   const [blocks,  setBlocks]  = useState<BlockDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast,   setToast]   = useState("");
+  const [unpublished, setUnpublished] = useState(false);
 
   // Add Block
   const [addOpen, setAddOpen] = useState(false);
@@ -241,11 +243,12 @@ export default function ReportsClient() {
   async function loadData(p: PeriodState, admin = isAdmin) {
     setLoading(true);
     try {
-      const [data, defs] = await Promise.all([
-        loadPeriodRows(p, admin),
+      const [load, defs] = await Promise.all([
+        loadPeriodRowsWithStatus(p, admin),
         fetchBlockDefs(),
       ]);
-      setRows(data);
+      setRows(load.rows);
+      setUnpublished(load.unpublished);
       setBlocks(defs);
     } finally {
       setLoading(false);
@@ -417,6 +420,7 @@ export default function ReportsClient() {
           <h1>Reports</h1>
         </div>
         <div className="page-header-right" style={{ gap: 8 }}>
+          <DraftBadge show={unpublished && !loading} />
           <button className="btn btn-secondary btn-sm" onClick={downloadCsv} disabled={loading || sorted.length === 0}>
             ⬇ Download CSV
           </button>

@@ -71,32 +71,35 @@ function fetchMonth(scope: string, y: number, m: number): Promise<Row[] | null> 
   return p;
 }
 
-async function loadMonthForRole(y: number, m: number, isAdmin: boolean, defs: BlockDef[]): Promise<Row[]> {
+type MonthLoad = { rows: Row[]; unpublished: boolean };
+
+async function loadMonthForRole(y: number, m: number, isAdmin: boolean, defs: BlockDef[]): Promise<MonthLoad> {
   if (isAdmin) {
     const [d, p] = await Promise.all([fetchMonth("draft", y, m), fetchMonth("published", y, m)]);
-    if (d) return mergeWithBase(d, defs);
-    if (p) return mergeWithBase(p, defs);
-    return mergeWithBase(null, defs);
-  } else {
-    const p = await fetchMonth("published", y, m);
-    return mergeWithBase(p, defs);
+    // Admins see the draft when there is one; flag it when it differs from what viewers see.
+    const unpublished = !!d && JSON.stringify(d) !== JSON.stringify(p);
+    return { rows: mergeWithBase(d ?? p ?? null, defs), unpublished };
   }
+  const p = await fetchMonth("published", y, m);
+  return { rows: mergeWithBase(p, defs), unpublished: false };
 }
 
-export async function loadPeriodRows(
-  period: PeriodState,
-  isAdmin: boolean
-): Promise<Row[]> {
+// Same as loadPeriodRows, plus whether an admin is looking at unpublished draft numbers.
+export async function loadPeriodRowsWithStatus(period: PeriodState, isAdmin: boolean): Promise<MonthLoad> {
   const defs = await fetchBlockDefs();
   if (period.view === "month") {
     return loadMonthForRole(period.year, period.month, isAdmin, defs);
-  } else {
-    const months = monthsForQuarter(period.quarter);
-    const lists = await Promise.all(
-      months.map((m) => loadMonthForRole(period.year, m, isAdmin, defs))
-    );
-    return combineQuarterRows(lists, defs);
   }
+  const months = monthsForQuarter(period.quarter);
+  const loads = await Promise.all(months.map((m) => loadMonthForRole(period.year, m, isAdmin, defs)));
+  return {
+    rows: combineQuarterRows(loads.map((l) => l.rows), defs),
+    unpublished: loads.some((l) => l.unpublished),
+  };
+}
+
+export async function loadPeriodRows(period: PeriodState, isAdmin: boolean): Promise<Row[]> {
+  return (await loadPeriodRowsWithStatus(period, isAdmin)).rows;
 }
 
 // All 12 months of a year in one request (/api/results/year), with the same
