@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, withTransaction, logPublish } from "@/lib/db";
-import { nowIso, requireAdmin, requireAuth } from "@/lib/auth";
+import { nowIso, requireAdmin, requireAuth, errorStatus } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   await initDb();
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, published_at });
   } catch (e: any) {
-    const status = e.message === "Admin only" ? 403 : 401;
+    const status = errorStatus(e);
     return NextResponse.json({ error: e.message || "Error" }, { status });
   }
 }

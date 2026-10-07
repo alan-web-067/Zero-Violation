@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, all } from "@/lib/db";
-import { requireAuth, isFullAdmin } from "@/lib/auth";
+import { requireAuth, isFullAdmin, errorStatus } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   await initDb();
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   try {
     user = await requireAuth(req);
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: errorStatus(e) });
   }
 
   const year = Number(new URL(req.url).searchParams.get("year"));

@@ -56,7 +56,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // The API call below keeps it fresh; on logout ME_KEY is cleared.
   const [user, setUser] = useState<User | null>(() => {
     if (typeof window === "undefined") return null;
-    try { return JSON.parse(localStorage.getItem(ME_KEY) ?? "null"); } catch { return null; }
+    try {
+      const cached = JSON.parse(localStorage.getItem(ME_KEY) ?? "null");
+      return cached && typeof cached.username === "string" ? cached : null;
+    } catch { return null; }
   });
 
   const fetchUser = useCallback(async () => {
@@ -67,7 +70,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       localStorage.setItem(ME_KEY, JSON.stringify(res.user));
       setUser(res.user);
     } catch {
-      localStorage.removeItem(ME_KEY);
+      clearStoredAuth();
       router.replace("/");
     }
   }, [router]);
@@ -75,11 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => { fetchUser(); }, [fetchUser]);
 
   const handleLogout = async () => {
-    // Fire-and-forget: resetting prefs shouldn't make logout wait a round trip.
-    apiClient("/api/prefs", {
-      method: "POST",
-      body: JSON.stringify({ theme_mode: "light", accent: "#0B7A4B", font_scale: 1, snow_enabled: false }),
-    }).catch(() => { /* ignore */ });
+    // Saved preferences (theme etc.) are kept for the next sign-in.
     clearStoredAuth();
     router.replace("/");
   };

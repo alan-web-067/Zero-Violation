@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, get } from "@/lib/db";
-import { requireAuth, isFullAdmin } from "@/lib/auth";
+import { requireAuth, isFullAdmin, errorStatus } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   await initDb();
@@ -36,6 +36,6 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.json({ data, updated_at: row.updated_at });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: errorStatus(e) });
   }
 }

@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, run, get, all } from "@/lib/db";
-import { nowIso, requireAdmin, requireAuth } from "@/lib/auth";
+import { nowIso, requireAdmin, requireAuth, errorStatus } from "@/lib/auth";
 
 type BlockRow = {
   id: number;
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     const rows = await all<BlockRow>(`SELECT * FROM blocks ORDER BY sort_order ASC, id ASC`);
     return NextResponse.json({ blocks: rows.map(toApi) });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: errorStatus(e) });
   }
 }
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     const created = await get<BlockRow>(`SELECT * FROM blocks WHERE name = ?`, [name]);
     return NextResponse.json({ ok: true, block: created ? toApi(created) : null });
   } catch (e: any) {
-    const status = e.message === "Admin only" ? 403 : 401;
+    const status = errorStatus(e);
     return NextResponse.json({ error: e.message || "Error" }, { status });
   }
 }

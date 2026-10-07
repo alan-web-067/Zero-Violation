@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import * as Label from "@radix-ui/react-label";
-import { apiClient, AUTH_TOKEN_KEY, ME_KEY } from "@/lib/apiClient";
+import { apiClient, getMe, clearStoredAuth, AUTH_TOKEN_KEY, ME_KEY } from "@/lib/apiClient";
 
 const NORMAL_DELAY = 11000;
 const HIT_DELAY = 7500;
@@ -78,7 +78,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    if (token) { router.replace("/dashboard"); return; }
+    if (token) {
+      // Only skip the form when the saved session still works; otherwise forget it
+      // (prevents bouncing between this page and the dashboard).
+      getMe()
+        .then(() => router.replace("/dashboard"))
+        .catch(() => { clearStoredAuth(); setMounted(true); startNormalRotation(); });
+      return () => stopNormalRotation();
+    }
     setMounted(true);
     startNormalRotation();
     return () => {

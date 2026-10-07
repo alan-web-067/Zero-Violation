@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, get } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, errorStatus } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   await initDb();
@@ -36,6 +36,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unauthorized";
-    return NextResponse.json({ error: message }, { status: 401 });
+    return NextResponse.json({ error: message }, { status: errorStatus(err) });
   }
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import PageSkeleton from "@/components/PageSkeleton";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, X } from "lucide-react";
@@ -72,6 +73,7 @@ export default function AdminClient() {
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
   const [confirmChanges, setConfirmChanges] = useState<string[] | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loadError, setLoadError] = useState("");
 
   const activeRows  = draftRows ?? baseRows;
   const displayRows = editMode ? activeRows : sortByKpi(applyKpiToRows(activeRows));
@@ -134,9 +136,16 @@ export default function AdminClient() {
     setLoading(true);
     if (admin) loadHistory(p);
     try {
-      const { rows, unpublished } = await loadPeriodRowsWithStatus(p, admin);
+      const { rows, unpublished } = await loadPeriodRowsWithStatus(p, admin, true);
+      setLoadError("");
       setUnpublished(unpublished);
       setBaseRows(rows);
+      setDraftRows(null);
+      setEditMode(false);
+    } catch {
+      // Don't show (or let anyone save) placeholder numbers in place of data we couldn't load.
+      setLoadError("Could not load this month's numbers. Check your connection and try again.");
+      setBaseRows([]);
       setDraftRows(null);
       setEditMode(false);
     } finally {
@@ -245,6 +254,9 @@ export default function AdminClient() {
 
   if (!mounted) return null;
 
+  // Still checking the role — don't flash the "no access" screen.
+  if (!isAdmin && role === null && loading) return <PageSkeleton />;
+
   if (!isAdmin) {
     return (
       <>
@@ -294,6 +306,15 @@ export default function AdminClient() {
         {/* Locked while editing so switching months can't silently discard unsaved numbers. */}
         <PeriodSelector period={period} onChange={handlePeriodChange} disabled={loading || saving || editMode} />
 
+        {loadError && !loading && (
+          <div className="card" style={{ marginBottom: 14, borderColor: "#fecaca" }}>
+            <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12, color: "#991b1b" }}>
+              <span>⚠️ {loadError}</span>
+              <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={() => loadData(period)}>Retry</button>
+            </div>
+          </div>
+        )}
+
         {/* Edit mode controls */}
         {period.view === "month" && (
           <div className="edit-mode-bar">
@@ -319,7 +340,7 @@ export default function AdminClient() {
             ) : (
               <>
                 <p>View mode — click Edit to enter numbers for this month</p>
-                <button className="btn btn-primary btn-sm" onClick={startEdit} disabled={loading}>
+                <button className="btn btn-primary btn-sm" onClick={startEdit} disabled={loading || !!loadError}>
                   ✏️ Edit Numbers
                 </button>
               </>

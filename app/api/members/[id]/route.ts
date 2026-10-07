@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, run, get } from "@/lib/db";
-import { requireAuth, nowIso } from "@/lib/auth";
+import { requireAuth, nowIso, errorStatus } from "@/lib/auth";
 
 function canRead(role: string) {
   return role === "hr" || role === "accounting" || role === "admin" || role === "super_admin";
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
     if (!member) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ member });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: errorStatus(e) });
   }
 }
 

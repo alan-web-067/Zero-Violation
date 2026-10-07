@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, all } from "@/lib/db";
-import { requireAdmin, requireAuth } from "@/lib/auth";
+import { requireAdmin, requireAuth, errorStatus } from "@/lib/auth";
 import { validPeriod } from "@/lib/kpi";
 
 export async function GET(req: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const user = await requireAuth(req);
     requireAdmin(user);
   } catch (e: any) {
-    const status = e.message === "Admin only" ? 403 : 401;
+    const status = errorStatus(e);
     return NextResponse.json({ error: e.message || "Unauthorized" }, { status });
   }
 

@@ -94,3 +94,13 @@ export function requireRole(user: JwtUser, allowed: Role[]) {
 export function nowIso(): string {
   return new Date().toISOString();
 }
+
+// HTTP status for an error caught in a route: sign-in problems → 401, missing
+// permission → 403, anything else (e.g. a database hiccup) → 500, so a server
+// error is never mistaken for "you are signed out".
+export function errorStatus(e: unknown): number {
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  if (msg === "Missing token" || msg === "Invalid or expired token") return 401;
+  if (msg === "Admin only" || msg.startsWith("Forbidden")) return 403;
+  return 500;
+}

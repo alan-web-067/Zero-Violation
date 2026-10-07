@@ -3,7 +3,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, get, run } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, errorStatus } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   await initDb();
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       row || { theme_mode: "dark", accent: "#0B7A4B", font_scale: 1, snow_enabled: 1 }
     );
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: errorStatus(e) });
   }
 }
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    const status = e.message === "Missing token" || e.message === "Invalid token" ? 401 : 500;
+    const status = errorStatus(e);
     return NextResponse.json({ error: e.message || "Error" }, { status });
   }
 }

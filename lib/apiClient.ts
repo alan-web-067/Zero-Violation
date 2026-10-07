@@ -39,6 +39,9 @@ export async function apiClient(
   }
 
   if (!res.ok) {
+    // Expired, disabled or otherwise rejected session: drop it so the login page
+    // shows the form instead of bouncing back into the app.
+    if (res.status === 401 && token) clearStoredAuth();
     const msg =
       (data as { error?: string })?.error ||
       `HTTP ${res.status}: ${res.statusText}`;

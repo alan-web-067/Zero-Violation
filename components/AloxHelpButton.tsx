@@ -55,87 +55,6 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
         },
       ],
     },
-    roleHelp: {
-      hr: {
-        title: "HR Dashboard",
-        intro:
-          "Your HR Dashboard shows the total employee headcount across all company blocks, and how it has changed month over month.",
-        sections: [
-          {
-            heading: "What this page shows",
-            body: "The headline cards show total employees company-wide, how many were added this month, how many departed, and the net change. The block list below breaks this down per block with before/after comparisons.",
-          },
-          {
-            heading: "Navigating to HR tools",
-            list: [
-              "Members — add, edit, and manage all employee records, upload profile photos, and submit monthly reports.",
-              "Upcoming Events — schedule and track company events, deadlines, and birthdays. Events within 7 days also appear as notifications here on your dashboard.",
-            ],
-          },
-          {
-            heading: "Monthly trend chart",
-            body: "The line chart shows total employee count for each month of the year, so you can see hiring trends at a glance.",
-          },
-        ],
-      },
-      accounting: {
-        title: "Accounting Dashboard",
-        intro:
-          "Your Accounting Dashboard shows the total truck count per block and how it changes each period.",
-        sections: [
-          {
-            heading: "What this page shows",
-            body: "The headline cards show total trucks company-wide, trucks added this month, trucks removed, and the net fleet change. The block list shows a before/after comparison for each block.",
-          },
-          {
-            heading: "Navigating to Accounting tools",
-            list: [
-              "Members — view all employees added by HR and manage their payroll. Search by name or employee ID to open a payroll form.",
-              "Use the period selector to switch between months and years for historical data.",
-            ],
-          },
-          {
-            heading: "Fleet trend chart",
-            body: "The line chart shows total truck count for each month of the year. The bar chart shows per-block changes for the selected period.",
-          },
-        ],
-      },
-    },
-  },
-  {
-    match: "/events",
-    help: {
-      title: "Upcoming Events",
-      intro:
-        "Upcoming Events is where you schedule and track company events, deadlines, birthdays, and meetings — with automatic notifications when an event is close.",
-      sections: [
-        {
-          heading: "Adding an event",
-          list: [
-            "Click '+ Add Event' in the top-right corner.",
-            "Enter an event title, select the date, choose an event type (e.g. Birthday, Meeting, Deadline, Holiday), and optionally add notes.",
-            "Click 'Create Event' to save.",
-          ],
-        },
-        {
-          heading: "Editing and deleting events",
-          body: "Click the pencil icon on any row to update an event's details. Click the trash icon to permanently delete it. Past events appear in a collapsed section at the bottom — click 'Past Events' to expand it.",
-        },
-        {
-          heading: "Event notifications",
-          list: [
-            "🔴 Red — event is today or tomorrow: urgent, act now.",
-            "🟡 Yellow — 2–3 days away: needs attention soon.",
-            "🔵 Blue — within 7 days: coming up this week.",
-            "Events also appear as notification banners on your HR Dashboard after login.",
-          ],
-        },
-        {
-          heading: "Dismissing a notification",
-          body: "Click the ✕ on any notification banner to dismiss it for the current session. It will reappear after your next login.",
-        },
-      ],
-    },
   },
   {
     match: "/reports",
@@ -208,6 +127,10 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
             "Highest Final KPI = needs improvement — these blocks sit at the bottom and are good candidates for coaching or a closer review.",
           ],
         },
+        {
+          heading: "Block profile",
+          body: "Click any block name to open its profile: rank and Final KPI for every month of the year, times finished #1, best month, and a chart you can compare against another block.",
+        },
       ],
     },
   },
@@ -232,6 +155,88 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
       ],
     },
   },
+  {
+    match: "/blocks",
+    help: {
+      title: "Block profile",
+      intro: "One block's whole year on a single page.",
+      sections: [
+        {
+          heading: "What this page shows",
+          list: [
+            "Times #1 — how many months this block finished first.",
+            "Average Final KPI and average rank across the months that have data.",
+            "Best month — the month with this block's lowest Final KPI.",
+            "Month by month — rank, numbers and Final KPI for every month.",
+          ],
+        },
+        {
+          heading: "Compare with another block",
+          body: "Pick a block in 'Compare with' to draw it on the same chart and add its Final KPI to the table. Green means this block did better that month, red means worse. Use the arrows at the top to switch years.",
+        },
+      ],
+    },
+  },
+  {
+    match: "/scoring",
+    help: {
+      title: "How Scoring Works",
+      intro: "The rules behind every Final KPI, with examples and a calculator.",
+      sections: [
+        {
+          heading: "The rules",
+          body: "Each month starts from the block's violation points. Clean discount: 30% off for any block with clean inspections. Inspection discount: from 50 inspections, 1% off per 10 inspections. Then the workload adjustment compares trucks checked with 40 per team member. Lower Final KPI = better.",
+        },
+        {
+          heading: "Try it",
+          body: "Type in any numbers to see exactly how the Final KPI is worked out, step by step.",
+        },
+      ],
+    },
+  },
+  {
+    match: "/workspace",
+    help: {
+      title: "My Workspace",
+      intro: "Where Block Managers send number changes, and admins review them.",
+      sections: [
+        {
+          heading: "Block Managers",
+          body: "Enter the new numbers for your block and submit them. Your changes go to an admin for review and appear on the site once they are approved.",
+        },
+        {
+          heading: "Admins",
+          body: "The approval queue lists changes waiting for review. Approve to publish them, or reject to send them back.",
+        },
+      ],
+    },
+  },
+  {
+    match: "/users",
+    help: {
+      title: "User Management",
+      intro: "Create accounts, change roles, reset passwords and disable access.",
+      sections: [
+        {
+          heading: "Actions",
+          list: [
+            "Create User — passwords need at least 8 characters, with a letter and a number.",
+            "Edit — change the role, or the block a Block Manager looks after.",
+            "Reset Password — sets a new password and also unlocks a locked account.",
+            "Disable / Enable — a disabled account cannot sign in.",
+          ],
+        },
+        {
+          heading: "Safety rules",
+          list: [
+            "After 5 wrong passwords in a row an account is locked for 15 minutes.",
+            "You can't disable or demote your own account, or the last active admin.",
+            "Only a Super Admin can create or change Super Admin accounts.",
+          ],
+        },
+      ],
+    },
+  },
 ];
 
 const DEFAULT_HELP: PageHelp = {
@@ -240,7 +245,7 @@ const DEFAULT_HELP: PageHelp = {
   sections: [
     {
       heading: "Getting around",
-      body: "Use the sidebar to jump between Dashboard, Leaderboard, Analytics, Reports, How Scoring Works, and Admin / Edit. Open this help panel from any page for guidance on what you're looking at.",
+      body: "Use the sidebar to jump between Dashboard, Leaderboard, Analytics, Reports, How Scoring Works, My Workspace, Admin / Edit and User Management. Open this help panel from any page for guidance on what you're looking at.",
     },
   ],
 };

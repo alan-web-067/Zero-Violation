@@ -54,7 +54,7 @@ export async function fetchBlockDefs(): Promise<BlockDef[]> {
   return blockDefsInFlight;
 }
 
-// Shares identical requests that are already in flight (e.g. Analytics loads each
+// Rejects on a failed request. Shares identical requests that are already in flight (e.g. Analytics loads each
 // month for both the monthly and quarterly charts at once). Nothing is kept after
 // the request settles, so saved/published data is never served stale.
 const inFlightMonths = new Map<string, Promise<Row[] | null>>();
@@ -65,7 +65,6 @@ function fetchMonth(scope: string, y: number, m: number): Promise<Row[] | null> 
   if (pending) return pending;
   const p = apiClient(url)
     .then((out) => out.data as Row[] | null)
-    .catch(() => null)
     .finally(() => inFlightMonths.delete(url));
   inFlightMonths.set(url, p);
   return p;
@@ -73,25 +72,29 @@ function fetchMonth(scope: string, y: number, m: number): Promise<Row[] | null> 
 
 type MonthLoad = { rows: Row[]; unpublished: boolean };
 
-async function loadMonthForRole(y: number, m: number, isAdmin: boolean, defs: BlockDef[]): Promise<MonthLoad> {
+// strict: a failed request throws instead of quietly showing the block defaults —
+// Admin/Edit needs this so it never saves defaults over data it couldn't load.
+async function loadMonthForRole(y: number, m: number, isAdmin: boolean, defs: BlockDef[], strict = false): Promise<MonthLoad> {
+  const get = (scope: string) => (strict ? fetchMonth(scope, y, m) : fetchMonth(scope, y, m).catch(() => null));
   if (isAdmin) {
-    const [d, p] = await Promise.all([fetchMonth("draft", y, m), fetchMonth("published", y, m)]);
+    const [d, p] = await Promise.all([get("draft"), get("published")]);
     // Admins see the draft when there is one; flag it when it differs from what viewers see.
     const unpublished = !!d && JSON.stringify(d) !== JSON.stringify(p);
     return { rows: mergeWithBase(d ?? p ?? null, defs), unpublished };
   }
-  const p = await fetchMonth("published", y, m);
+  const p = await get("published");
   return { rows: mergeWithBase(p, defs), unpublished: false };
 }
 
 // Same as loadPeriodRows, plus whether an admin is looking at unpublished draft numbers.
-export async function loadPeriodRowsWithStatus(period: PeriodState, isAdmin: boolean): Promise<MonthLoad> {
+export async function loadPeriodRowsWithStatus(period: PeriodState, isAdmin: boolean, strict = false): Promise<MonthLoad> {
   const defs = await fetchBlockDefs();
+  if (strict && defs.length === 0) throw new Error("Could not load the block list.");
   if (period.view === "month") {
-    return loadMonthForRole(period.year, period.month, isAdmin, defs);
+    return loadMonthForRole(period.year, period.month, isAdmin, defs, strict);
   }
   const months = monthsForQuarter(period.quarter);
-  const loads = await Promise.all(months.map((m) => loadMonthForRole(period.year, m, isAdmin, defs)));
+  const loads = await Promise.all(months.map((m) => loadMonthForRole(period.year, m, isAdmin, defs, strict)));
   return {
     rows: combineQuarterRows(loads.map((l) => l.rows), defs),
     unpublished: loads.some((l) => l.unpublished),

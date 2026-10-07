@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, run, get, all } from "@/lib/db";
-import { requireAuth, nowIso, isFullAdmin } from "@/lib/auth";
+import { requireAuth, nowIso, isFullAdmin, errorStatus } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   await initDb();
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ reports });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: e.message || "Unauthorized" }, { status: errorStatus(e) });
   }
 }
 

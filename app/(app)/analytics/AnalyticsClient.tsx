@@ -48,6 +48,7 @@ export default function AnalyticsClient() {
   const [blockSnap,    setBlockSnap]    = useState<RowWithKpi[]>([]);
   const [blockNames,   setBlockNames]   = useState<string[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [loadError,    setLoadError]    = useState("");
   const [focusBlock,   setFocusBlock]   = useState<string | null>(null);
 
   const currentYear = now.getFullYear();
@@ -82,6 +83,7 @@ export default function AnalyticsClient() {
 
   async function loadAll(y: number, admin = isAdmin) {
     setLoading(true);
+    setLoadError("");
     try {
       // One request for the whole year; quarters and the current month are built from it.
       const yearRows = await loadYearMonthRows(y, admin);
@@ -113,6 +115,8 @@ export default function AnalyticsClient() {
       setMonthlyRanks(monthly.map(({ best, worst }) => ({ best, worst })));
       setQuarterlyData(quarterly);
       setBlockSnap(rankedOnly(sortByKpi(applyKpiToRows(curRows))));
+    } catch {
+      setLoadError("Could not load the charts for this year.");
     } finally {
       setLoading(false);
     }
@@ -156,6 +160,14 @@ export default function AnalyticsClient() {
       </div>
 
       <div className="page-body">
+        {loadError && !loading && (
+          <div className="card" style={{ marginBottom: 14, borderColor: "#fecaca" }}>
+            <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 12, color: "#991b1b" }}>
+              <span>⚠️ {loadError}</span>
+              <button className="btn btn-secondary btn-sm" style={{ marginLeft: "auto" }} onClick={() => loadAll(year)}>Retry</button>
+            </div>
+          </div>
+        )}
         {loading && (
           <div className="empty-state" style={{ padding: 48 }}>
             <div className="empty-state-icon">⏳</div>
@@ -265,7 +277,7 @@ export default function AnalyticsClient() {
 
               <div className="card">
                 <div className="card-header">
-                  <h2 className="card-title">Block Comparison — Current Month</h2>
+                  <h2 className="card-title">Block Comparison — {MONTHS[now.getMonth()].name} {year}</h2>
                 </div>
                 <div className="card-body">
                   <div className="chart-container" style={{ height: 220 }}>
