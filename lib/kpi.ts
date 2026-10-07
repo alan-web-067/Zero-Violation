@@ -18,7 +18,7 @@ export type KpiResult = {
   cleanRate: number;      // clean ÷ total inspections (0–1)
   cleanPercent: number;   // discount applied to violation points (0–0.30)
   cleanDelta: number;
-  inspectionPercent: number; // inspection-volume discount (0–0.10)
+  inspectionPercent: number; // inspection-volume discount (1% per 10 inspections, from 50)
   inspectionDelta: number;
   afterClean: number;        // violation points after clean + inspection discounts
   expectedTrucks: number;
@@ -102,27 +102,18 @@ export function getStaffPercent(teamMembers: number, trucksChecked: number): num
 
 const MAX_CLEAN_DISCOUNT = 0.30;
 
-// Blocks that did more inspections than the period's average get a small % off
-// their violation points, growing to the full amount for the block with the most.
-// At or below average: no discount (and no penalty).
-export const MAX_INSPECTION_DISCOUNT = 0.10;
+// More inspections → bigger % off the violation points. No discount below the
+// minimum; above it, 1% per 10 inspections with no upper limit (50 → 5%, 300 → 30%).
+// Clean + inspection discounts together are capped at 100% so points never go negative.
+export const MIN_INSPECTIONS_FOR_DISCOUNT = 50;
+export const INSPECTION_DISCOUNT_PER_INSPECTION = 0.001;
 
-export type InspectionStats = { avg: number; max: number };
-
-export function inspectionStats(rows: Row[]): InspectionStats {
-  const counts = rows.map((r) => Number(r.totalInspections || 0)).filter((n) => n > 0);
-  if (counts.length === 0) return { avg: 0, max: 0 };
-  return { avg: counts.reduce((a, b) => a + b, 0) / counts.length, max: Math.max(...counts) };
+function inspectionDiscount(totalIns: number): number {
+  if (totalIns < MIN_INSPECTIONS_FOR_DISCOUNT) return 0;
+  return round2(totalIns * INSPECTION_DISCOUNT_PER_INSPECTION);
 }
 
-function inspectionDiscount(totalIns: number, stats?: InspectionStats): number {
-  if (!stats || stats.max <= stats.avg || totalIns <= stats.avg) return 0;
-  return round2(MAX_INSPECTION_DISCOUNT * (totalIns - stats.avg) / (stats.max - stats.avg));
-}
-
-// `stats` = inspectionStats() of every block in the same period. Without it the
-// inspection discount is skipped — prefer applyKpiToRows(), which supplies it.
-export function calcKpi(row: Row, stats?: InspectionStats): KpiResult {
+export function calcKpi(row: Row): KpiResult {
   const periodMonths = Number(row.periodMonths || 1);
 
   const maxKpi = periodMonths * 10;
@@ -138,7 +129,10 @@ export function calcKpi(row: Row, stats?: InspectionStats): KpiResult {
   const cleanRate = totalIns > 0 ? clamp(cleanIns / totalIns, 0, 1) : 0;
   const cleanPercent = violPoint > 0 ? round2(MAX_CLEAN_DISCOUNT * cleanRate) : 0;
   const cleanDelta = violPoint * cleanPercent;
-  const inspectionPercent = violPoint > 0 ? inspectionDiscount(totalIns, stats) : 0;
+  // Quarter rows sum 3 months of inspections — use the monthly average.
+  const inspectionPercent = violPoint > 0
+    ? Math.min(inspectionDiscount(totalIns / periodMonths), 1 - cleanPercent)
+    : 0;
   const inspectionDelta = violPoint * inspectionPercent;
   const afterClean = violPoint - cleanDelta - inspectionDelta;
 
@@ -250,8 +244,7 @@ export function combineQuarterRows(lists: Row[][], defs: BlockDef[]): Row[] {
 }
 
 export function applyKpiToRows(rows: Row[]): RowWithKpi[] {
-  const stats = inspectionStats(rows);
-  return rows.map((r) => ({ ...r, kpi: calcKpi(r, stats) }));
+  return rows.map((r) => ({ ...r, kpi: calcKpi(r) }));
 }
 
 function trucksPerMember(r: Row): number {
