@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Pencil } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
+import RenameBlockDialog from "@/components/RenameBlockDialog";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
 import {
   Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, RowWithKpi,
@@ -41,6 +43,7 @@ export default function AdminClient() {
   const [saving,    setSaving]    = useState(false);
   const [toast,     setToast]     = useState("");
   const [addOpen,   setAddOpen]   = useState(false);
+  const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
 
   const activeRows  = draftRows ?? baseRows;
   const displayRows = editMode ? activeRows : sortByKpi(applyKpiToRows(activeRows));
@@ -310,7 +313,21 @@ export default function AdminClient() {
                               </span>
                             </td>
                           )}
-                          <td><strong>{r.name}</strong></td>
+                          <td>
+                            <strong>{r.name}</strong>
+                            {isAdmin && !editMode && (
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-icon"
+                                style={{ marginLeft: 6, padding: 2, verticalAlign: "middle", opacity: 0.6 }}
+                                title="Rename block"
+                                aria-label={`Rename ${r.name}`}
+                                onClick={() => setRenameTarget({ id: String(r.id), name: r.name })}
+                              >
+                                <Pencil size={13} />
+                              </button>
+                            )}
+                          </td>
 
                           <td className="num">
                             {editMode
@@ -380,6 +397,15 @@ export default function AdminClient() {
           Use "Publish" to make data visible to all viewers. Quarter view combines 3 months automatically — edit individual months instead.
         </div>
       </div>
+
+      <RenameBlockDialog
+        target={renameTarget}
+        onClose={() => setRenameTarget(null)}
+        onRenamed={async (name) => {
+          setToast(`Block renamed to "${name}" ✅`);
+          await loadData(period);
+        }}
+      />
 
       <AddBlockDialog
         open={addOpen}

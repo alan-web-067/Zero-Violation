@@ -8,6 +8,7 @@ import { X, MoreVertical } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
+import RenameBlockDialog from "@/components/RenameBlockDialog";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
 import { applyKpiToRows, sortByKpi, rankedOnly, fmtPct, MONTHS, Row } from "@/lib/kpi";
 import { loadPeriodRows, fetchBlockDefs, invalidateBlockDefsCache, BlockDef } from "@/lib/useKpiData";
@@ -182,9 +183,6 @@ export default function ReportsClient() {
 
   // Rename Block
   const [renameTarget, setRenameTarget] = useState<BlockDef | null>(null);
-  const [renameName,   setRenameName]   = useState("");
-  const [renameError,  setRenameError]  = useState("");
-  const [renameSaving, setRenameSaving] = useState(false);
 
   // Delete (soft — sets Inactive) confirmation
   const [deleteTarget, setDeleteTarget] = useState<BlockDef | null>(null);
@@ -310,32 +308,6 @@ export default function ReportsClient() {
   // ---------- Rename Block ----------
   function openRenameBlock(b: BlockDef) {
     setRenameTarget(b);
-    setRenameName(b.name);
-    setRenameError("");
-  }
-
-  async function handleRenameBlock(e: { preventDefault(): void }) {
-    e.preventDefault();
-    if (!renameTarget) return;
-    setRenameError("");
-
-    const name = renameName.trim();
-    if (!name) { setRenameError("Block Name is required."); return; }
-
-    setRenameSaving(true);
-    try {
-      await apiClient(`/api/blocks/${renameTarget.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ name }),
-      });
-      setRenameTarget(null);
-      setToast(`Block renamed to "${name}" ✅`);
-      await reloadAfterBlockChange();
-    } catch (err) {
-      setRenameError(err instanceof Error ? err.message : "Failed to rename block");
-    } finally {
-      setRenameSaving(false);
-    }
   }
 
   // ---------- Delete (soft → Inactive) / Activate ----------
@@ -666,38 +638,14 @@ export default function ReportsClient() {
       </Dialog.Root>
 
       {/* Rename Block */}
-      <Dialog.Root open={!!renameTarget} onOpenChange={(o) => { if (!o) setRenameTarget(null); }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="dialog-overlay" />
-          <Dialog.Content className="add-block-panel" aria-describedby={undefined}>
-            <form onSubmit={handleRenameBlock}>
-              <div className="add-block-header">
-                <Dialog.Title className="alox-title">Rename Block</Dialog.Title>
-                <Dialog.Close asChild>
-                  <button type="button" className="btn btn-ghost btn-icon" aria-label="Close">
-                    <X size={15} />
-                  </button>
-                </Dialog.Close>
-              </div>
-              <div className="add-block-body">
-                {renameError && <div className="add-block-error">{renameError}</div>}
-                <div className="add-block-field" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Block Name</label>
-                  <input value={renameName} onChange={(e) => setRenameName(e.target.value)} autoFocus required />
-                </div>
-              </div>
-              <div className="add-block-footer">
-                <Dialog.Close asChild>
-                  <button type="button" className="btn btn-secondary btn-sm">Cancel</button>
-                </Dialog.Close>
-                <button type="submit" className="btn btn-primary btn-sm" disabled={renameSaving}>
-                  {renameSaving ? "Saving…" : "Save"}
-                </button>
-              </div>
-            </form>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+      <RenameBlockDialog
+        target={renameTarget}
+        onClose={() => setRenameTarget(null)}
+        onRenamed={async (name) => {
+          setToast(`Block renamed to "${name}" ✅`);
+          await reloadAfterBlockChange();
+        }}
+      />
 
       {/* Delete Block confirmation */}
       <Dialog.Root open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
