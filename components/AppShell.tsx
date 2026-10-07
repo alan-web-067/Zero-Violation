@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Separator from "@radix-ui/react-separator";
-import { LayoutDashboard, Trophy, TrendingUp, FileText, Settings2, Search, Briefcase, Users, UserCheck, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Trophy, TrendingUp, FileText, Settings2, Search, Briefcase, Users, UserCheck, Calculator, type LucideIcon } from "lucide-react";
 import { AUTH_TOKEN_KEY, ME_KEY, apiClient, getMe, clearStoredAuth } from "@/lib/apiClient";
 import AloxChat from "@/components/AloxChat";
 import AloxHelpButton from "@/components/AloxHelpButton";
@@ -36,6 +36,7 @@ const NAV: Array<{
       { href: "/leaderboard", label: "Leaderboard",    icon: Trophy,    roles: ["admin", "super_admin", "block_manager", "viewer"] },
       { href: "/analytics",   label: "Analytics",      icon: TrendingUp, roles: ["admin", "super_admin", "block_manager", "viewer"] },
       { href: "/reports",     label: "Reports",        icon: FileText,  roles: ["admin", "super_admin", "block_manager", "viewer"] },
+      { href: "/scoring",     label: "How Scoring Works", icon: Calculator },
     ],
   },
   {
