@@ -921,7 +921,7 @@ export default function LoginPage() {
                   className="ll-input"
                   value={username}
                   onChange={(e) => { setUsername(e.target.value); setErrorMsg(""); }}
-                  placeholder="admin"
+                  placeholder="Enter your username"
                   autoComplete="username"
                   autoFocus
                   onKeyDown={(e) => e.key === "Enter" && doLogin()}

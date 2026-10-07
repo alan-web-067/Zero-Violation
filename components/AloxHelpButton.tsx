@@ -24,7 +24,7 @@ type PageHelp = {
 
 const CHAT_TIP: HelpSection = {
   heading: "Ask Alox Chat",
-  body: 'Open Alox Chat from the sidebar and ask questions in plain language — like "Which block is performing best this month?" or "What does Final KPI mean?" — or pick one of the ready-made questions from the Questions Library. Alox answers using your current dashboard data.',
+  body: 'Open Alox Chat from the sidebar and ask in plain language — like "Which block is performing best?", "Who is Team of the Year?" or "How is C BLOCK doing?". Tap ✨ next to the message box for question ideas. Alox answers from the latest published results and links you to the right page.',
 };
 
 // Each entry may carry role-specific help that overrides the default for that role.
@@ -691,24 +691,25 @@ export default function AloxHelpButton() {
 
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="add-block-panel alox-help-panel" aria-describedby={undefined}>
-          <div className="add-block-header alox-help-header">
-            <Dialog.Title className="alox-help-title">
-              <Bot size={17} strokeWidth={2} />
-              Alox — {help.title}
-            </Dialog.Title>
+        <Dialog.Content className="add-block-panel alox-help-panel hp-panel" aria-describedby={undefined}>
+          <div className="hp-header">
+            <Image src="/alox/alox-neutral.png" alt="" width={38} height={38} className="ax-avatar" />
+            <div className="hp-heading">
+              <span className="hp-kicker"><Bot size={12} strokeWidth={2.2} /> Page guide</span>
+              <Dialog.Title className="hp-title">{help.title}</Dialog.Title>
+            </div>
             <Dialog.Close asChild>
-              <button type="button" className="btn btn-ghost btn-icon" aria-label="Close help">
-                <X size={15} />
+              <button type="button" className="ax-icon-btn" aria-label="Close help">
+                <X size={16} />
               </button>
             </Dialog.Close>
           </div>
 
-          <div className="add-block-body alox-help-body">
-            <p className="alox-help-intro">{help.intro}</p>
-            {sections.map((section) => (
-              <div className="alox-help-section" key={section.heading}>
-                <h4>{section.heading}</h4>
+          <div className="hp-body">
+            <p className="hp-intro">{help.intro}</p>
+            {sections.map((section, i) => (
+              <div className="hp-section" key={section.heading}>
+                <h4><span className="hp-num">{i + 1}</span>{section.heading}</h4>
                 {section.body && <p>{section.body}</p>}
                 {section.list && (
                   <ul>
@@ -719,6 +720,16 @@ export default function AloxHelpButton() {
                 )}
               </div>
             ))}
+          </div>
+
+          <div className="hp-footer">
+            <button
+              type="button"
+              className="hp-chat-btn"
+              onClick={() => { setDialogOpen(false); setTimeout(openAloxChat, 120); }}
+            >
+              <MessageSquare size={15} /> Still have a question? Ask Alox Chat
+            </button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

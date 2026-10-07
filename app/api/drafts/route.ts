@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
         FROM field_drafts d
         JOIN users u ON u.id = d.user_id
         LEFT JOIN blocks b ON b.id = CAST(d.block_id AS INTEGER)
-        WHERE d.status = 'pending' AND u.role IN ('block_manager', 'hr', 'accounting')
+        WHERE d.status = 'pending'
         ORDER BY d.updated_at DESC
       `);
       return NextResponse.json({ drafts: rows.map(serializeDraft) });

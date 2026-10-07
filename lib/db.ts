@@ -322,7 +322,19 @@ async function migrate() {
 
   // Seed default accounts if empty
   const row = await get<{ c: number }>(`SELECT COUNT(*) as c FROM users`);
-  if ((row?.c ?? 0) === 0) {
+  // In production the first admin's password must come from ADMIN_INITIAL_PASSWORD
+  // (the built-in demo password is public); without it no account is created.
+  const isProd = process.env.NODE_ENV === "production";
+  const initialAdminPassword = isProd ? process.env.ADMIN_INITIAL_PASSWORD : "Admin@12345";
+  if ((row?.c ?? 0) === 0 && isProd && !initialAdminPassword) {
+    console.warn("No users exist. Set ADMIN_INITIAL_PASSWORD to create the first admin account.");
+  }
+  if ((row?.c ?? 0) === 0 && initialAdminPassword && isProd) {
+    await run(`INSERT INTO users(username, password_hash, role) VALUES(?, ?, ?)`, ["admin", bcrypt.hashSync(initialAdminPassword, 10), "super_admin"]);
+    const admin = await get<{ id: number }>(`SELECT id FROM users WHERE username = 'admin'`);
+    if (admin?.id) await run(`INSERT OR IGNORE INTO prefs(user_id) VALUES(?)`, [admin.id]);
+  }
+  if ((row?.c ?? 0) === 0 && !isProd) {
     const adminHash  = bcrypt.hashSync("Admin@12345",  10);
     const viewerHash = bcrypt.hashSync("Viewer@12345", 10);
 

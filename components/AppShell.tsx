@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Separator from "@radix-ui/react-separator";
-import { LayoutDashboard, Trophy, TrendingUp, FileText, Settings2, Briefcase, Users, Calculator, Award, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Trophy, TrendingUp, FileText, Settings2, Briefcase, Users, Calculator, Award, Menu, X, type LucideIcon } from "lucide-react";
 import { AUTH_TOKEN_KEY, ME_KEY, apiClient, getMe, clearStoredAuth } from "@/lib/apiClient";
 import AloxChat from "@/components/AloxChat";
 import AloxHelpButton from "@/components/AloxHelpButton";
@@ -78,6 +78,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { fetchUser(); }, [fetchUser]);
 
+  // Phones: the sidebar becomes a slide-in menu opened from the ☰ button.
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   const handleLogout = async () => {
     // Saved preferences (theme etc.) are kept for the next sign-in.
     clearStoredAuth();
@@ -87,7 +96,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <Tooltip.Provider delayDuration={400}>
       <div className="app-shell">
-        <nav className="sidebar">
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+        {menuOpen && <div className="sidebar-scrim" onClick={() => setMenuOpen(false)} aria-hidden />}
+        <nav className={`sidebar${menuOpen ? " open" : ""}`}>
           {/* Logo */}
           <div className="sidebar-logo">
             <Image
@@ -122,6 +141,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                       <Tooltip.Trigger asChild>
                         <Link
                           href={item.href}
+                          onClick={() => setMenuOpen(false)}
                           className={`sidebar-link sidebar-link-animated${isActive ? " active" : ""}`}
                         >
                           <item.icon size={16} strokeWidth={2} style={{ flexShrink: 0, opacity: 0.88 }} />

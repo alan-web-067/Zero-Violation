@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, withTransaction, logPublish } from "@/lib/db";
 import { nowIso, requireAdmin, requireAuth, errorStatus } from "@/lib/auth";
+import { validPeriod } from "@/lib/kpi";
 
 export async function POST(req: NextRequest) {
   await initDb();
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
     if (!year || !month) return NextResponse.json({ error: "Missing year/month" }, { status: 400 });
 
     const y = Number(year), m = Number(month);
+    if (!validPeriod(y, m)) return NextResponse.json({ error: "Invalid year/month" }, { status: 400 });
     const published_at = nowIso();
     const ok = await withTransaction(async (tx) => {
       const draft = await tx.get<{ data_json: string }>(
