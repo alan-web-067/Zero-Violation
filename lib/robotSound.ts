@@ -11,9 +11,13 @@ export function robotSoundEnabled(): boolean {
 
 export function setRobotSoundEnabled(on: boolean) {
   try { localStorage.setItem(ROBOT_SOUND_KEY, on ? "on" : "off"); } catch { /* storage unavailable */ }
+  if (!on && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
 let ctx: AudioContext | null = null;
+
+// Chrome fills the voice list asynchronously — ask early so the first hit already has a nice voice.
+if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.getVoices();
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -56,10 +60,38 @@ export function playRobotHit(level: number) {
   src.connect(ng).connect(ac.destination);
   src.start(t);
 
-  // Robot reply: two beeps that get lower (and buzzier) the more he is hit.
+  // Robot reply: Alox says it out loud (browser voice). Falls back to beeps where speech isn't available.
   const grumpy = Math.min(level, 6);
-  const base = 880 - grumpy * 90;
-  const wave: OscillatorType = grumpy >= 4 ? "sawtooth" : "square";
-  tone(ac, wave, base, base * 0.92, t + 0.2, 0.11, 0.07);
-  tone(ac, wave, base * 0.75, base * (grumpy >= 3 ? 0.4 : 0.7), t + 0.33, 0.18, 0.07);
+  if (!speak(grumpy)) {
+    const base = 880 - grumpy * 90;
+    const wave: OscillatorType = grumpy >= 4 ? "sawtooth" : "square";
+    tone(ac, wave, base, base * 0.92, t + 0.2, 0.11, 0.07);
+    tone(ac, wave, base * 0.75, base * (grumpy >= 3 ? 0.4 : 0.7), t + 0.33, 0.18, 0.07);
+  }
+}
+
+// Gets grumpier with every hit (index = how many times Alox was hit before).
+const LINES = [
+  "Ouch! Don't hit me!",
+  "Hey! Don't hit me!",
+  "Ow! That hurts! Don't hit me!",
+  "Stop it! Don't hit me!",
+  "I said, don't hit me!",
+  "Don't. Hit. Me.",
+  "Robot abuse detected! Don't hit me!",
+];
+
+function speak(level: number): boolean {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
+  const synth = window.speechSynthesis;
+  const say = new SpeechSynthesisUtterance(LINES[level] ?? LINES[LINES.length - 1]);
+  // High, quick and cute at first; lower and slower as Alox gets angry.
+  say.pitch = Math.max(0.4, 1.8 - level * 0.22);
+  say.rate = Math.max(0.85, 1.15 - level * 0.05);
+  say.volume = 1;
+  const english = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith("en"));
+  say.voice = english.find((v) => /google us english|samantha|zira|aria|jenny/i.test(v.name)) ?? english[0] ?? null;
+  synth.cancel();                 // a new hit interrupts the previous line
+  setTimeout(() => synth.speak(say), 180);  // right after the bonk
+  return true;
 }
