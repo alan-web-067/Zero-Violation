@@ -101,6 +101,9 @@ export function getStaffPercent(teamMembers: number, trucksChecked: number): num
 }
 
 const MAX_CLEAN_DISCOUNT = 0.30;
+// Clean rate that already earns the full clean discount. A 100%-clean block
+// usually has 0 points, so the full 30% has to be reachable before that.
+export const FULL_CLEAN_RATE = 0.90;
 
 // More inspections → bigger % off the violation points. No discount below the
 // minimum; above it, 1% per 10 inspections with no upper limit (50 → 5%, 300 → 30%).
@@ -125,9 +128,9 @@ export function calcKpi(row: Row): KpiResult {
   const cleanIns = Number(row.cleanInspections || 0);
   const totalIns = Number(row.totalInspections || 0);
 
-  // Clean discount scales with the real clean-inspection rate: 100% clean → −30%.
+  // Clean discount scales with the clean-inspection rate: 90%+ clean → −30%, less → proportionally less.
   const cleanRate = totalIns > 0 ? clamp(cleanIns / totalIns, 0, 1) : 0;
-  const cleanPercent = violPoint > 0 ? round2(MAX_CLEAN_DISCOUNT * cleanRate) : 0;
+  const cleanPercent = violPoint > 0 ? round2(MAX_CLEAN_DISCOUNT * Math.min(1, cleanRate / FULL_CLEAN_RATE)) : 0;
   const cleanDelta = violPoint * cleanPercent;
   // Quarter rows sum 3 months of inspections — use the monthly average.
   const inspectionPercent = violPoint > 0

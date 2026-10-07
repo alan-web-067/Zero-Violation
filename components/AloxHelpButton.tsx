@@ -51,7 +51,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
         },
         {
           heading: "How KPI performance is understood",
-          body: "A lower Final KPI means better performance. It starts from violation points, then takes off a clean discount (up to 30%, based on clean ÷ total inspections) and an inspection discount (from 50 inspections, 1% per 10), and finally scales by workload (trucks checked vs. 40 per team member). Blocks with nothing entered show \"No data\" and are not ranked. A rising KPI is a signal to take a closer look at that block.",
+          body: "A lower Final KPI means better performance. It starts from violation points, then takes off a clean discount (up to 30%, the full 30% from 90% clean inspections) and an inspection discount (from 50 inspections, 1% per 10), and finally scales by workload (trucks checked vs. 40 per team member). Blocks with nothing entered show \"No data\" and are not ranked. A rising KPI is a signal to take a closer look at that block.",
         },
       ],
     },
@@ -158,7 +158,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
             "Total Inspections — every inspection performed in the period (clean plus those with violations).",
             "Violation Points — the total points accumulated from violations recorded during inspections.",
             "Staff Adj. / Staff % — the workload adjustment: expected trucks (40 per team member) ÷ trucks actually checked, between ×0.5 and ×2. Green means the team checked more than its target.",
-            "Discounts — clean discount (up to 30%, scaled by clean ÷ total inspections) plus inspection discount (from 50 inspections, 1% per 10). Hover the number for the breakdown.",
+            "Discounts — clean discount (up to 30%; full 30% from 90% clean, less below that) plus inspection discount (from 50 inspections, 1% per 10). Hover the number for the breakdown.",
             "Final KPI — the computed compliance score for the period; lower is better.",
             "Status — Perfect (≤ 2), Excellent (≤ 6), Good (≤ 8.9), Poor, or No data when nothing was entered (per month; ×3 for quarters).",
           ],
