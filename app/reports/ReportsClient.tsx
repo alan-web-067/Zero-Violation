@@ -570,6 +570,29 @@ export default function ReportsClient() {
           </div>
         </div>
 
+        {/* Deactivated blocks with no data this period are hidden from the table — list them so they can be restored. */}
+        {isAdmin && !loading && (() => {
+          const shown = new Set(rows.map((r) => String(r.id)));
+          const hidden = blocks.filter((b) => b.status === "inactive" && !shown.has(b.id));
+          if (hidden.length === 0) return null;
+          return (
+            <div className="card" style={{ marginTop: 14 }}>
+              <div className="card-header">
+                <h2 className="card-title">Deactivated blocks</h2>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Hidden from all pages</span>
+              </div>
+              <div className="card-body" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {hidden.map((b) => (
+                  <span key={b.id} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "4px 6px 4px 10px", border: "1px solid var(--border)", borderRadius: 8 }}>
+                    <strong style={{ fontSize: 13 }}>{b.name}</strong>
+                    <button className="btn btn-secondary btn-sm" onClick={() => activateBlock(b)}>Activate</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         <div style={{ marginTop: 16, fontSize: 11, color: "var(--text-light)", textAlign: "center" }}>
           ALGO GROUP · Zero Violations Dashboard · {periodLabel} · Lowest KPI = Best Performance
         </div>

@@ -191,12 +191,16 @@ export function makeBaseBlocks(defs: BlockDef[]): Row[] {
 }
 
 export function mergeWithBase(data: Row[] | null, defs: BlockDef[]): Row[] {
-  const base = makeBaseBlocks(defs);
-  if (!data) return base;
-  const byId = new Map(data.map((x) => [String(x.id), x]));
-  const byName = new Map(data.map((x) => [x.name, x]));
+  const byId = new Map((data ?? []).map((x) => [String(x.id), x]));
+  const byName = new Map((data ?? []).map((x) => [x.name, x]));
   // Match by id first (stable across renames), fall back to name (legacy saved data).
-  return base.map((def) => byId.get(def.id) || byName.get(def.name) || def);
+  // Inactive (deleted) blocks only appear in periods where they have saved data.
+  return makeBaseBlocks(defs).flatMap((def, i) => {
+    const saved = byId.get(def.id) || byName.get(def.name);
+    if (defs[i].status === "inactive" && !saved) return [];
+    // Saved rows keep their numbers but always show the block's current name.
+    return [saved ? { ...saved, id: def.id, name: def.name } : def];
+  });
 }
 
 export function fmtPct(p: number): string {
@@ -211,7 +215,10 @@ export function monthsForQuarter(q: number): number[] {
 }
 
 export function combineQuarterRows(lists: Row[][], defs: BlockDef[]): Row[] {
-  const base = makeBaseBlocks(defs);
+  // `lists` come from mergeWithBase, so a block missing from every month is inactive with no data.
+  const base = makeBaseBlocks(defs).filter((def) =>
+    lists.some((list) => list.some((r) => String(r.id) === def.id))
+  );
 
   return base.map((def) => {
     const r3 = lists.map((list) => list.find((r) => String(r.id) === def.id) || list.find((r) => r.name === def.name) || def);
