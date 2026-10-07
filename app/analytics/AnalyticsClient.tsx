@@ -9,12 +9,12 @@ import {
 import * as Select from "@radix-ui/react-select";
 import { ChevronDown, Check } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
   applyKpiToRows, sortByKpi, rankedOnly, MONTHS,
   RowWithKpi,
 } from "@/lib/kpi";
-import { loadPeriodRows, fetchBlockDefs } from "@/lib/useKpiData";
+import { fetchBlockDefs, loadYearMonthRows, quarterFromMonths } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 
@@ -63,7 +63,7 @@ export default function AnalyticsClient() {
 
   async function boot() {
     try {
-      const me   = await apiClient("/api/me");
+      const me   = await getMe();
       const role = me.user?.role;
       // RBAC FEATURE — Analytics is built on KPI trends; HR/Accounting's job
       // has nothing to do with KPI, so send them to their own dashboard (the
@@ -84,10 +84,12 @@ export default function AnalyticsClient() {
   async function loadAll(y: number, admin = isAdmin) {
     setLoading(true);
     try {
+      // One request for the whole year; quarters and the current month are built from it.
+      const yearRows = await loadYearMonthRows(y, admin);
       const [monthly, quarterly, curRows] = await Promise.all([
         Promise.all(
           Array.from({ length: 12 }, (_, i) => i + 1).map(async (m) => {
-            const rows = await loadPeriodRows({ year: y, month: m, quarter: Math.ceil(m / 3), view: "month" }, admin);
+            const rows = yearRows[m - 1];
             const withKpi = sortByKpi(applyKpiToRows(rows));
             const pt: MonthPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
             withKpi.forEach((r) => { if (!r.kpi.noData) pt[r.name] = r.kpi.finalKpi; });
@@ -99,16 +101,14 @@ export default function AnalyticsClient() {
         ),
         Promise.all(
           Array.from({ length: 4 }, (_, i) => i + 1).map(async (q) => {
-            const rows = await loadPeriodRows({ year: y, month: (q - 1) * 3 + 1, quarter: q, view: "quarter" }, admin);
+            const rows = await quarterFromMonths(yearRows, q);
             const withKpi = sortByKpi(applyKpiToRows(rows));
             const pt: QuarterPoint = { label: `Q${q}` };
             withKpi.forEach((r) => { if (!r.kpi.noData) pt[r.name] = r.kpi.finalKpi; });
             return pt;
           })
         ),
-        loadPeriodRows({
-          year: y, month: now.getMonth() + 1, quarter: Math.floor(now.getMonth() / 3) + 1, view: "month",
-        }, admin),
+        Promise.resolve(yearRows[now.getMonth()]),
       ]);
       setMonthlyData(monthly.map((x) => x.pt));
       setMonthlyRanks(monthly.map(({ best, worst }) => ({ best, worst })));

@@ -12,7 +12,7 @@ import {
   UserPlus, Camera,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { MONTHS } from "@/lib/kpi";
 
 type Me = { id: number; username: string; role: string };
@@ -185,7 +185,7 @@ export default function MembersClient() {
   async function boot() {
     try {
       const [meRes, blocksRes] = await Promise.all([
-        apiClient("/api/me"),
+        getMe(),
         apiClient("/api/blocks"),
       ]);
       const role = meRes.user?.role;

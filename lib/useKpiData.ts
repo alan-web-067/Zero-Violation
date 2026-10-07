@@ -34,19 +34,24 @@ export function invalidateBlockDefsCache() {
   blockDefsCache = null;
 }
 
+// Parallel callers on a cold cache share one request instead of each firing their own.
+let blockDefsInFlight: Promise<BlockDef[]> | null = null;
+
 export async function fetchBlockDefs(): Promise<BlockDef[]> {
   const now = Date.now();
   if (blockDefsCache && now - blockDefsCache.ts < BLOCK_DEFS_TTL_MS) {
     return blockDefsCache.defs;
   }
-  try {
-    const out = await apiClient("/api/blocks");
-    const defs = (out.blocks || []) as BlockDef[];
-    blockDefsCache = { defs, ts: now };
-    return defs;
-  } catch {
-    return blockDefsCache?.defs ?? [];
-  }
+  if (blockDefsInFlight) return blockDefsInFlight;
+  blockDefsInFlight = apiClient("/api/blocks")
+    .then((out) => {
+      const defs = (out.blocks || []) as BlockDef[];
+      blockDefsCache = { defs, ts: Date.now() };
+      return defs;
+    })
+    .catch(() => blockDefsCache?.defs ?? [])
+    .finally(() => { blockDefsInFlight = null; });
+  return blockDefsInFlight;
 }
 
 // Shares identical requests that are already in flight (e.g. Analytics loads each
@@ -92,6 +97,27 @@ export async function loadPeriodRows(
     );
     return combineQuarterRows(lists, defs);
   }
+}
+
+// All 12 months of a year in one request (/api/results/year), with the same
+// draft-before-published rule as loadMonthForRole. Index 0 = January.
+export async function loadYearMonthRows(year: number, isAdmin: boolean): Promise<Row[][]> {
+  const [defs, out] = await Promise.all([
+    fetchBlockDefs(),
+    apiClient(`/api/results/year?year=${year}`),
+  ]);
+  const months = (out.months || {}) as Record<string, { draft: Row[] | null; published: Row[] | null }>;
+  return Array.from({ length: 12 }, (_, i) => {
+    const m = months[String(i + 1)];
+    const data = (isAdmin ? m?.draft ?? m?.published : m?.published) ?? null;
+    return mergeWithBase(data, defs);
+  });
+}
+
+// Quarter rows built from already-loaded month lists (q = 1..4).
+export async function quarterFromMonths(monthRows: Row[][], q: number): Promise<Row[]> {
+  const defs = await fetchBlockDefs();
+  return combineQuarterRows(monthsForQuarter(q).map((m) => monthRows[m - 1]), defs);
 }
 
 export function useKpiData(isAdmin: boolean) {

@@ -20,7 +20,7 @@ import {
 } from "recharts";
 import AppShell from "@/components/AppShell";
 import MonthYearSelector, { MonthYear } from "@/components/MonthYearSelector";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { Row, MONTHS } from "@/lib/kpi";
 import { loadPeriodRows } from "@/lib/useKpiData";
 import { changeDirection, formatChange, CHANGE_PILL_CLASS, CHANGE_COLOR } from "@/lib/changeFormat";
@@ -85,7 +85,7 @@ export default function HrDashboardClient() {
 
   async function boot() {
     try {
-      await apiClient("/api/me");
+      await getMe();
       await Promise.all([load(period), loadTrend(period.year), loadUpcomingEvents()]);
     } catch {
       router.replace("/");

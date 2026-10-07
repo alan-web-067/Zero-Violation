@@ -7,7 +7,7 @@ import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
 import RenameBlockDialog from "@/components/RenameBlockDialog";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
   Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, RowWithKpi,
 } from "@/lib/kpi";
@@ -79,7 +79,7 @@ export default function AdminClient() {
 
   async function boot() {
     try {
-      const me = await apiClient("/api/me");
+      const me = await getMe();
       const r: Role | undefined = me.user?.role;
       setRole(r ?? null);
       // PERMISSIONS FIX — super_admin must have full Admin/Edit access too,

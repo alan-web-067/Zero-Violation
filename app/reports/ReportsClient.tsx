@@ -9,7 +9,7 @@ import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
 import RenameBlockDialog from "@/components/RenameBlockDialog";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { applyKpiToRows, sortByKpi, rankedOnly, fmtPct, MONTHS, Row } from "@/lib/kpi";
 import { loadPeriodRows, fetchBlockDefs, invalidateBlockDefsCache, BlockDef } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
@@ -222,7 +222,7 @@ export default function ReportsClient() {
 
   async function boot() {
     try {
-      const me   = await apiClient("/api/me");
+      const me   = await getMe();
       const role = me.user?.role;
       // RBAC FEATURE — Reports surfaces KPI/violation rankings; HR/Accounting's
       // job has nothing to do with KPI, so send them to their own dashboard

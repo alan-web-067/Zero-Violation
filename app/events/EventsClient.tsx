@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Calendar, Plus, Edit2, Trash2, X, Bell, ChevronDown, ChevronUp } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 
 type Event = {
   id: number;
@@ -101,7 +101,7 @@ export default function EventsClient() {
 
   async function boot() {
     try {
-      const me = await apiClient("/api/me");
+      const me = await getMe();
       if (me.user?.role !== "hr" && me.user?.role !== "admin" && me.user?.role !== "super_admin") {
         router.replace("/dashboard"); return;
       }

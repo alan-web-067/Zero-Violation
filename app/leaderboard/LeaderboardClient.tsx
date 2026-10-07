@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, RowWithKpi } from "@/lib/kpi";
 import { loadPeriodRows } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
@@ -51,7 +51,7 @@ export default function LeaderboardClient() {
 
   async function boot() {
     try {
-      const me   = await apiClient("/api/me");
+      const me   = await getMe();
       const role = me.user?.role;
       // RBAC FEATURE — Leaderboard is a KPI ranking view; HR/Accounting's
       // job has nothing to do with KPI, so send them to their own dashboard

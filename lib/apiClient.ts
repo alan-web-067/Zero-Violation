@@ -8,6 +8,7 @@ export function getStoredToken(): string {
 }
 
 export function clearStoredAuth() {
+  meCache = null;
   if (typeof window === "undefined") return;
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(ME_KEY);
@@ -45,4 +46,25 @@ export async function apiClient(
   }
 
   return data;
+}
+
+// /api/me is needed by the shell AND by every page on load. Share one request
+// (and reuse the answer briefly across page navigations) instead of fetching twice.
+const ME_TTL_MS = 30_000;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let meCache: { promise: Promise<any>; ts: number; token: string } | null = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getMe(): Promise<any> {
+  const token = getStoredToken();
+  const now = Date.now();
+  if (meCache && meCache.token === token && now - meCache.ts < ME_TTL_MS) return meCache.promise;
+  const promise = apiClient("/api/me");
+  meCache = { promise, ts: now, token };
+  promise.catch(() => { if (meCache?.promise === promise) meCache = null; });
+  return promise;
+}
+
+export function invalidateMe() {
+  meCache = null;
 }

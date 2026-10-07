@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { Row, RowWithKpi, calcKpi, applyKpiToRows, MONTHS, fmtPct } from "@/lib/kpi";
 import { loadPeriodRows, fetchBlockDefs } from "@/lib/useKpiData";
 import { roleLabel } from "@/lib/permissions";
@@ -116,7 +116,11 @@ function BlockManagerPanel({ me }: { me: Me }) {
     if (!block) { setLoading(false); return; }
     setLoading(true);
     try {
-      const rows = await loadPeriodRows(p, false);
+      // Rows and my drafts are independent — fetch both at once.
+      const [rows, mine] = await Promise.all([
+        loadPeriodRows(p, false),
+        apiClient("/api/drafts?scope=mine"),
+      ]);
       const row = rows.find((r) => String(r.id) === block.id) || null;
       setCurrent(row);
       if (row) {
@@ -129,7 +133,6 @@ function BlockManagerPanel({ me }: { me: Me }) {
         });
       }
 
-      const mine = await apiClient("/api/drafts?scope=mine");
       const drafts = (mine.drafts || []) as DraftDTO[];
       const own = drafts.find((d) => d.blockId === block.id && d.year === p.year && d.month === p.month && d.status === "pending") || null;
       setMyDraft(own);
@@ -600,11 +603,11 @@ function ApprovalQueuePanel() {
 
       const periods = Array.from(new Set(list.map((d) => `${d.year}-${d.month}`)));
       const map: Record<string, RowWithKpi[]> = {};
-      for (const key of periods) {
+      await Promise.all(periods.map(async (key) => {
         const [y, m] = key.split("-").map(Number);
         const raw = await loadPeriodRows({ year: y, quarter: Math.floor((m - 1) / 3) + 1, month: m, view: "month" }, false);
         map[key] = applyKpiToRows(raw);
-      }
+      }));
       setCurrentByPeriod(map);
     } finally {
       setLoading(false);
@@ -733,7 +736,7 @@ export default function WorkspaceClient() {
 
   async function boot() {
     try {
-      const out = await apiClient("/api/me");
+      const out = await getMe();
       const role = out.user?.role;
       const allowed = ["block_manager", "hr", "accounting", "super_admin", "admin"];
       if (!allowed.includes(role)) { setDenied(true); return; }

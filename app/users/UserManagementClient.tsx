@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { fetchBlockDefs, BlockDef } from "@/lib/useKpiData";
 import type { Role } from "@/lib/auth";
 import { roleLabel, ROLE_LABELS } from "@/lib/permissions";
@@ -101,16 +101,15 @@ export default function UserManagementClient() {
 
   async function boot() {
     try {
-      const me = await apiClient("/api/me");
+      const me = await getMe();
       if (me.user?.role !== "admin" && me.user?.role !== "super_admin") {
         setAllowed(false);
         setLoading(false);
         return;
       }
       setAllowed(true);
-      const defs = await fetchBlockDefs();
+      const [defs] = await Promise.all([fetchBlockDefs(), loadUsers()]);
       setBlocks(defs);
-      await loadUsers();
     } catch {
       router.replace("/");
     } finally {

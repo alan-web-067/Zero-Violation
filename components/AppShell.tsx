@@ -7,7 +7,7 @@ import { useEffect, useState, useCallback } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Separator from "@radix-ui/react-separator";
 import { LayoutDashboard, Trophy, TrendingUp, FileText, Settings2, Search, Briefcase, Users, UserCheck, type LucideIcon } from "lucide-react";
-import { AUTH_TOKEN_KEY, ME_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, ME_KEY, apiClient, getMe, clearStoredAuth } from "@/lib/apiClient";
 import AloxChat from "@/components/AloxChat";
 import AloxHelpButton from "@/components/AloxHelpButton";
 import AdminProfileMenu from "@/components/AdminProfileMenu";
@@ -66,7 +66,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     try {
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
       if (!token) { router.replace("/"); return; }
-      const res = await apiClient("/api/me");
+      const res = await getMe();
       localStorage.setItem(ME_KEY, JSON.stringify(res.user));
       setUser(res.user);
     } catch {
@@ -78,14 +78,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => { fetchUser(); }, [fetchUser]);
 
   const handleLogout = async () => {
-    try {
-      await apiClient("/api/prefs", {
-        method: "POST",
-        body: JSON.stringify({ theme_mode: "light", accent: "#0B7A4B", font_scale: 1, snow_enabled: false }),
-      });
-    } catch { /* ignore */ }
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(ME_KEY);
+    // Fire-and-forget: resetting prefs shouldn't make logout wait a round trip.
+    apiClient("/api/prefs", {
+      method: "POST",
+      body: JSON.stringify({ theme_mode: "light", accent: "#0B7A4B", font_scale: 1, snow_enabled: false }),
+    }).catch(() => { /* ignore */ });
+    clearStoredAuth();
     router.replace("/");
   };
 

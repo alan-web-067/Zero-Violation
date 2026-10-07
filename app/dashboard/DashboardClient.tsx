@@ -11,11 +11,11 @@ import AppShell from "@/components/AppShell";
 import HrDashboardClient from "./HrDashboardClient";
 import AccountingDashboardClient from "./AccountingDashboardClient";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
-import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
+import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
   applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, MONTHS, RowWithKpi,
 } from "@/lib/kpi";
-import { loadPeriodRows } from "@/lib/useKpiData";
+import { loadPeriodRows, loadYearMonthRows } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 import { askAlox } from "@/components/AloxChat";
@@ -121,7 +121,7 @@ export default function DashboardClient() {
 
   async function boot() {
     try {
-      const me = await apiClient("/api/me");
+      const me = await getMe();
       const r  = me.user?.role ?? null;
       setRole(r);
       // RBAC FEATURE — HR/Accounting render their own dashboard (see the
@@ -177,10 +177,13 @@ export default function DashboardClient() {
   }
 
   async function loadTrend(year: number, admin = isAdmin) {
+    // One request for the whole year instead of 12–24.
+    const yearRows = await loadYearMonthRows(year, admin).catch(() => null);
     const results = await Promise.all(
       Array.from({ length: 12 }, (_, i) => i + 1).map(async (m) => {
         try {
-          const rows    = await loadPeriodRows({ year, month: m, quarter: Math.ceil(m / 3), view: "month" }, admin);
+          if (!yearRows) throw new Error("no data");
+          const rows    = yearRows[m - 1];
           const withKpi = sortByKpi(applyKpiToRows(rows));
           const pt: TrendPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
           const monthHistory: Record<string, string | undefined> = {};
