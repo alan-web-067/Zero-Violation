@@ -83,24 +83,9 @@ function bonk(ac: AudioContext, t: number) {
   noiseBurst(ac, t, 0.06, 0.12, "lowpass", 4000);
 }
 
-// Three soft sobs ("huh-huh-huh"): short falling notes with a breath on each.
-function sobs(ac: AudioContext, t: number) {
-  for (let i = 0; i < 3; i++) {
-    const s = t + i * 0.22;
-    tone(ac, "sine", 520 - i * 25, 400 - i * 20, s, 0.16, 0.12);
-    noiseBurst(ac, s, 0.13, 0.05, "bandpass", 1300, true);
-  }
-}
-
 // Bright little "ding-ding-ding" before a happy line.
 function chime(ac: AudioContext, t: number) {
   [784, 988, 1319].forEach((f, i) => tone(ac, "sine", f, f, t + i * 0.09, 0.22, 0.09));
-}
-
-// A wet sniffle: two short rising breaths of filtered noise.
-function sniffle(ac: AudioContext, t: number) {
-  noiseBurst(ac, t, 0.16, 0.22, "highpass", 2200, true);
-  noiseBurst(ac, t + 0.22, 0.24, 0.26, "highpass", 2600, true);
 }
 
 // --- Speech -----------------------------------------------------------------
@@ -162,7 +147,7 @@ function speak(text: string, mood: Mood, delayMs: number, onDone?: () => void): 
   setTimeout(() => {
     if (id !== talkId) return;
     // Crying lines repeat the first word with a pause ("Why… why would you…"),
-    // said smoothly in one go — the sobs and sniffle around it carry the crying.
+    // said smoothly in one go in a slow, soft voice.
     let said = line;
     if (mood === "sad") {
       const first = line.split(/\s+/)[0].replace(/[^A-Za-z']/g, "");
@@ -186,7 +171,7 @@ export function sayLine(text: string) {
   speak(text, "happy", ac ? 350 : 0);
 }
 
-// Hit: bonk, then the bubble line in the bubble's mood (crying gets sobs before and a sniffle after).
+// Hit: bonk, then the bubble line spoken in the bubble's mood.
 export function playRobotHit(text: string, mood: Mood) {
   if (!robotSoundEnabled()) return;
   const ac = audio();
@@ -194,16 +179,8 @@ export function playRobotHit(text: string, mood: Mood) {
   const t = ac.currentTime + 0.01;
   bonk(ac, t);
 
-  if (mood === "sad") {
-    sobs(ac, t + 0.25);
-    const spoke = speak(text, "sad", 900, () => {
-      const a = audio();
-      if (a && robotSoundEnabled()) sniffle(a, a.currentTime + 0.1);
-    });
-    if (spoke) return;
-  } else if (speak(text, mood, 200)) {
-    return;
-  }
+  // Synthesized sobs sounded like beeps ("tu-tu-tu"), so crying is carried by the voice alone.
+  if (speak(text, mood, 250)) return;
 
   // No speech in this browser: two little beeps instead.
   const low = mood === "angry" || mood === "furious";
