@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, run } from "@/lib/db";
 import { nowIso, requireAdmin, requireAuth } from "@/lib/auth";
+import { monthRowsError, validPeriod } from "@/lib/kpi";
 
 export async function POST(req: NextRequest) {
   await initDb();
@@ -14,6 +15,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const { year, month, data } = body || {};
     if (!year || !month || !data) return NextResponse.json({ error: "Missing payload" }, { status: 400 });
+    if (!validPeriod(Number(year), Number(month))) return NextResponse.json({ error: "Invalid year/month" }, { status: 400 });
+    const dataError = monthRowsError(data);
+    if (dataError) return NextResponse.json({ error: dataError }, { status: 400 });
 
     const updated_at = nowIso();
     const json = JSON.stringify(data);

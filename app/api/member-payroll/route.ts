@@ -65,13 +65,13 @@ export async function POST(req: NextRequest) {
       const row = await get<any>(`SELECT * FROM member_payroll WHERE id=?`, [existing.id]);
       return NextResponse.json({ payroll: row });
     } else {
-      await run(
+      const ins = await get<{ id: number }>(
         `INSERT INTO member_payroll(member_id,year,month,salary,payment_type,bonus,deduction,notes,created_by,created_at,updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+         VALUES(?,?,?,?,?,?,?,?,?,?,?) RETURNING id`,
         [Number(member_id), Number(year), Number(month), salary ?? null, payment_type || null,
          bonus ?? 0, deduction ?? 0, notes || null, user.uid, ts, ts]
       );
-      const row = await get<any>(`SELECT * FROM member_payroll WHERE rowid=last_insert_rowid()`);
+      const row = await get<any>(`SELECT * FROM member_payroll WHERE id=?`, [ins?.id]);
       return NextResponse.json({ payroll: row }, { status: 201 });
     }
   } catch (e: any) {

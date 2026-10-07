@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
 
     if (!row) return NextResponse.json({ data: null, updated_at: null });
 
-    return NextResponse.json({ data: JSON.parse(row.data_json), updated_at: row.updated_at });
+    let data: unknown = null;
+    try { data = JSON.parse(row.data_json); } catch {
+      console.error(`month_results ${scope} ${year}-${month} has invalid JSON`);
+    }
+    return NextResponse.json({ data, updated_at: row.updated_at });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Unauthorized" }, { status: 401 });
   }

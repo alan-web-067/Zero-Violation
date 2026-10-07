@@ -65,11 +65,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ report });
     }
 
-    await run(
-      `INSERT INTO monthly_member_reports(year,month,status,submitted_by,submitted_at,created_at) VALUES(?,?,?,?,?,?)`,
+    const ins = await get<{ id: number }>(
+      `INSERT INTO monthly_member_reports(year,month,status,submitted_by,submitted_at,created_at) VALUES(?,?,?,?,?,?) RETURNING id`,
       [Number(year), Number(month), "pending", user.uid, ts, ts]
     );
-    const report = await get<any>(`SELECT * FROM monthly_member_reports WHERE rowid=last_insert_rowid()`);
+    const report = await get<any>(`SELECT * FROM monthly_member_reports WHERE id=?`, [ins?.id]);
     return NextResponse.json({ report }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Server error" }, { status: 500 });

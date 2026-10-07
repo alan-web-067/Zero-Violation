@@ -50,6 +50,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     if (body?.name !== undefined) {
       const name = String(body.name).trim();
       if (!name) return NextResponse.json({ error: "Block name is required" }, { status: 400 });
+      if (name.length > 60) return NextResponse.json({ error: "Block name is too long (max 60)" }, { status: 400 });
       const dupe = await get<{ id: number }>(`SELECT id FROM blocks WHERE name = ? AND id != ?`, [name, blockId]);
       if (dupe) return NextResponse.json({ error: "A block with this name already exists" }, { status: 409 });
       fields.push("name = ?");
@@ -58,28 +59,30 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     if (body?.teamMembers !== undefined) {
       const v = Number(body.teamMembers);
-      if (Number.isNaN(v)) return NextResponse.json({ error: "Team Members must be a number" }, { status: 400 });
+      if (Number.isNaN(v) || v < 0) return NextResponse.json({ error: "Team Members must be a number ≥ 0" }, { status: 400 });
       fields.push("team_members = ?");
       params.push(v);
     }
 
     if (body?.trucks !== undefined) {
       const v = Number(body.trucks);
-      if (Number.isNaN(v)) return NextResponse.json({ error: "Trucks must be a number" }, { status: 400 });
+      if (Number.isNaN(v) || v < 0) return NextResponse.json({ error: "Trucks must be a number ≥ 0" }, { status: 400 });
       fields.push("trucks = ?");
       params.push(v);
     }
 
     if (body?.startingKpi !== undefined) {
       const v = Number(body.startingKpi);
-      if (Number.isNaN(v)) return NextResponse.json({ error: "Starting KPI Score must be a number" }, { status: 400 });
+      if (Number.isNaN(v) || v < 0) return NextResponse.json({ error: "Starting KPI Score must be a number ≥ 0" }, { status: 400 });
       fields.push("starting_kpi = ?");
       params.push(v);
     }
 
     if (body?.notes !== undefined) {
+      const notes = String(body.notes).trim();
+      if (notes.length > 1000) return NextResponse.json({ error: "Notes are too long (max 1000)" }, { status: 400 });
       fields.push("notes = ?");
-      params.push(String(body.notes).trim());
+      params.push(notes);
     }
 
     if (body?.status !== undefined) {

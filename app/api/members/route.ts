@@ -77,9 +77,9 @@ export async function POST(req: NextRequest) {
     }
 
     const ts = nowIso();
-    await run(
+    const ins = await get<{ id: number }>(
       `INSERT INTO members(first_name,last_name,date_of_birth,date_joined,employee_id,block_id,status,created_by,created_at,updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?)`,
+       VALUES(?,?,?,?,?,?,?,?,?,?) RETURNING id`,
       [first_name.trim(), last_name.trim(), date_of_birth || null, date_joined || null,
        employee_id.trim(), block_id ? Number(block_id) : null, "active", user.uid, ts, ts]
     );
@@ -89,8 +89,8 @@ export async function POST(req: NextRequest) {
              m.employee_id, m.block_id, m.status, m.created_at, m.updated_at,
              b.name AS block_name
       FROM members m LEFT JOIN blocks b ON b.id = m.block_id
-      WHERE m.id = last_insert_rowid()
-    `);
+      WHERE m.id = ?
+    `, [ins?.id]);
 
     return NextResponse.json({ member }, { status: 201 });
   } catch (e: any) {

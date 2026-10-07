@@ -286,3 +286,35 @@ export function kpiReasons(r: RowWithKpi): string[] {
   }
   return out;
 }
+
+// ── Input validation (shared by the API routes) ────────────────────────────
+export const MAX_FIELD_VALUE = 1_000_000;
+const ROW_NUMBER_FIELDS = ["teamMembers", "trucks", "cleanInspections", "totalInspections", "violationPoints"] as const;
+
+export function validPeriod(year: number, month: number): boolean {
+  return Number.isInteger(year) && year >= 2000 && year <= 2100 && Number.isInteger(month) && month >= 1 && month <= 12;
+}
+
+// Returns an error message, or null when the value is a valid count/score.
+export function fieldValueError(field: string, value: unknown): string | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_FIELD_VALUE) return `"${field}" must be between 0 and ${MAX_FIELD_VALUE}`;
+  return null;
+}
+
+// Validates a full month payload (array of block rows) saved by Admin / Edit.
+export function monthRowsError(data: unknown): string | null {
+  if (!Array.isArray(data)) return "Data must be a list of blocks";
+  if (data.length > 500) return "Too many blocks";
+  for (const r of data as Record<string, unknown>[]) {
+    if (!r || typeof r !== "object" || !r.id || typeof r.name !== "string") return "Each block needs an id and name";
+    for (const f of ROW_NUMBER_FIELDS) {
+      const err = fieldValueError(f, r[f] ?? 0);
+      if (err) return `${r.name}: ${err}`;
+    }
+    if (Number(r.cleanInspections || 0) > Number(r.totalInspections || 0)) {
+      return `${r.name}: clean inspections cannot exceed total inspections`;
+    }
+  }
+  return null;
+}

@@ -54,6 +54,11 @@ export async function POST(req: NextRequest) {
     const trucks = Number(body?.trucks) || 0;
     const startingKpi = Number(body?.startingKpi) || 0;
     const notes = String(body?.notes || "").trim();
+    if (name.length > 60) return NextResponse.json({ error: "Block name is too long (max 60)" }, { status: 400 });
+    if (notes.length > 1000) return NextResponse.json({ error: "Notes are too long (max 1000)" }, { status: 400 });
+    if (teamMembers < 0 || trucks < 0 || startingKpi < 0) {
+      return NextResponse.json({ error: "Numbers cannot be negative" }, { status: 400 });
+    }
 
     const existing = await get<{ id: number }>(`SELECT id FROM blocks WHERE name = ?`, [name]);
     if (existing) return NextResponse.json({ error: "A block with this name already exists" }, { status: 409 });

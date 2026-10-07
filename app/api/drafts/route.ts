@@ -28,6 +28,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { initDb, get, all, run } from "@/lib/db";
 import { requireAuth, requireAdmin, nowIso, Role } from "@/lib/auth";
 import { canEditField, isCompanyWideEditor, hasDraftStage, ALL_DRAFT_FIELDS } from "@/lib/permissions";
+import { fieldValueError, validPeriod } from "@/lib/kpi";
 
 const DRAFT_ROLES: Role[] = ["block_manager", "hr", "accounting", "admin", "super_admin"];
 
@@ -120,6 +121,13 @@ export async function POST(req: NextRequest) {
     if (!blockId || !year || !month) {
       return NextResponse.json({ error: "Missing blockId/year/month" }, { status: 400 });
     }
+    if (!validPeriod(year, month)) {
+      return NextResponse.json({ error: "Invalid year/month" }, { status: 400 });
+    }
+    const blockExists = await get<{ id: number }>(`SELECT id FROM blocks WHERE id = ?`, [Number(blockId)]);
+    if (!blockExists) {
+      return NextResponse.json({ error: "Block not found" }, { status: 404 });
+    }
 
     const changeKeys = Object.keys(changes);
     if (!changeKeys.length) {
@@ -132,9 +140,14 @@ export async function POST(req: NextRequest) {
       if (!canEditField(user.role, key)) {
         return NextResponse.json({ error: `Your role cannot edit "${key}"` }, { status: 403 });
       }
-      if (!Number.isFinite(Number(changes[key]))) {
-        return NextResponse.json({ error: `Invalid value for "${key}"` }, { status: 400 });
+      const valueError = fieldValueError(key, changes[key]);
+      if (valueError) {
+        return NextResponse.json({ error: valueError }, { status: 400 });
       }
+    }
+    if (changes.cleanInspections !== undefined && changes.totalInspections !== undefined &&
+        Number(changes.cleanInspections) > Number(changes.totalInspections)) {
+      return NextResponse.json({ error: "Clean inspections cannot exceed total inspections" }, { status: 400 });
     }
 
     // Block Managers may only draft changes for their own assigned block.

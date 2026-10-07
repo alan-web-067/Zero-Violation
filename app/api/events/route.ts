@@ -60,13 +60,13 @@ export async function POST(req: NextRequest) {
     }
 
     const ts = nowIso();
-    await run(
+    const ins = await get<{ id: number }>(
       `INSERT INTO events(title,description,event_date,event_type,created_by,created_at,updated_at)
-       VALUES(?,?,?,?,?,?,?)`,
+       VALUES(?,?,?,?,?,?,?) RETURNING id`,
       [title.trim(), description || null, event_date, event_type || "general", user.uid, ts, ts]
     );
 
-    const ev = await get<any>(`SELECT * FROM events WHERE rowid=last_insert_rowid()`);
+    const ev = await get<any>(`SELECT * FROM events WHERE id=?`, [ins?.id]);
     return NextResponse.json({ event: ev }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "Server error" }, { status: 500 });

@@ -363,4 +363,29 @@ async function migrate() {
   await run(`UPDATE users SET status = 'disabled' WHERE role IN ('hr', 'accounting')`);
 }
 
-export { run, get, all };
+// Runs `fn` inside one write transaction — use for read-modify-write updates
+// (e.g. merging into a month's JSON) so concurrent requests can't lose changes.
+type TxHelpers = { get: typeof get; run: typeof run };
+
+async function withTransaction<T>(fn: (tx: TxHelpers) => Promise<T>): Promise<T> {
+  const tx = await db.transaction("write");
+  try {
+    const helpers: TxHelpers = {
+      run: async (sql, params = []) => { await tx.execute({ sql, args: params as InValue[] }); },
+      get: async <R = unknown>(sql: string, params: unknown[] = []) => {
+        const rs = await tx.execute({ sql, args: params as InValue[] });
+        return rs.rows.length ? (rs.rows[0] as unknown as R) : undefined;
+      },
+    };
+    const out = await fn(helpers);
+    await tx.commit();
+    return out;
+  } catch (e) {
+    await tx.rollback().catch(() => {});
+    throw e;
+  } finally {
+    tx.close();
+  }
+}
+
+export { run, get, all, withTransaction };
