@@ -26,7 +26,6 @@ const BADGE_CLASS: Record<string, string> = {
 
 // Examples for the rule tables — values come from calcKpi(), so they always match the real scoring.
 const EXAMPLE_BASE: Row = { id: "ex", name: "ex", teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 10 };
-const CLEAN_EXAMPLES: Array<[number, number]> = [[100, 100], [30, 40], [5, 20], [0, 40]];
 const INSPECTION_EXAMPLES = [40, 50, 100, 200, 300, 500];
 const WORKLOAD_EXAMPLES = [400, 300, 200, 150, 100];
 
@@ -39,14 +38,14 @@ function RuleTable({ n, title, note, head, rows }: {
   n: number;
   title: string;
   note?: string;
-  head: string[];
-  rows: React.ReactNode[][];
+  head?: string[];
+  rows?: React.ReactNode[][];
 }) {
   return (
     <div style={{ marginTop: 18, marginBottom: 4 }}>
       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2 }}>{n}. {title}</div>
       {note && <div style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 6 }}>{note}</div>}
-      <div className="table-wrap" style={{ border: "1px solid var(--border)", borderRadius: 10 }}>
+      {head && rows && <div className="table-wrap" style={{ border: "1px solid var(--border)", borderRadius: 10 }}>
         <table className="data-table">
           <thead>
             <tr>{head.map((h, i) => <th key={i} className={i === 0 ? undefined : "num"}>{h}</th>)}</tr>
@@ -59,7 +58,7 @@ function RuleTable({ n, title, note, head, rows }: {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
     </div>
   );
 }
@@ -99,12 +98,7 @@ export default function ScoringClient() {
               <RuleTable
                 n={1}
                 title="Clean discount — 30% for every block with clean inspections"
-                note="Same 30% whether it is 30 of 40 or 100 of 100. Blocks that inspect more get extra reward from the inspection discount below."
-                head={["Clean / Total", "Clean rate", "Clean discount"]}
-                rows={CLEAN_EXAMPLES.map(([c, t]) => {
-                  const k = calcKpi({ ...EXAMPLE_BASE, cleanInspections: c, totalInspections: t });
-                  return [`${c} / ${t}`, `${Math.round((c / t) * 100)}%`, pct(k.cleanPercent)];
-                })}
+                note="Every block gets 30% off its violation points for its clean inspections, no matter how many clean inspections it has. Blocks that inspect more get extra reward from the inspection discount below."
               />
 
               <RuleTable
