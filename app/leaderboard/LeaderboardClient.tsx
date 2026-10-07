@@ -149,7 +149,7 @@ export default function LeaderboardClient() {
                       <th className="num">Trucks</th>
                       <th className="num">Expected</th>
                       <th className="num">Staff Perf. %</th>
-                      <th className="num">KPI Adj. %</th>
+                      <th className="num">Workload %</th>
                       <th className="num">Clean Ins.</th>
                       <th className="num">Total Ins.</th>
                       <th className="num">Discounts</th>
@@ -187,7 +187,7 @@ export default function LeaderboardClient() {
                             </span>
                           ) : "—"}
                         </td>
-                        {/* KPI Adjustment % = −staffPerformance% (inverted: overperf lowers KPI) */}
+                        {/* Workload adjustment: expected ÷ actual trucks − 1 (negative = checked more than target) */}
                         <td className="num">
                           {r.kpi.expectedTrucks ? (
                             <span style={{

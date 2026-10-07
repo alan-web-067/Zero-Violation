@@ -23,7 +23,7 @@ import AppShell from "@/components/AppShell";
 import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { fetchBlockDefs, BlockDef } from "@/lib/useKpiData";
 import type { Role } from "@/lib/auth";
-import { roleLabel, ROLE_LABELS } from "@/lib/permissions";
+import { roleLabel } from "@/lib/permissions";
 
 type UserDTO = {
   id: number;
@@ -310,9 +310,9 @@ export default function UserManagementClient() {
 
         <div style={{ marginTop: 14, padding: "12px 16px", background: "var(--gray-50)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
           <strong style={{ color: "var(--text)" }}>Roles:</strong>{" "}
-          {Object.entries(ROLE_LABELS).filter(([r]) => r !== "admin" && r !== "viewer").map(([, label]) => label).join(" · ")} are managed here.
-          Block Managers must be assigned exactly one block; HR can edit only Team Members; Accounting can edit only Truck Count;
-          Super Admin has full access including publishing Block Manager drafts.
+          Super Admin and Administrator have full access, including publishing and approving Block Manager changes.
+          Block Managers must be assigned exactly one block and propose changes for it in My Workspace.
+          Viewers can only see published results.
         </div>
       </div>
 

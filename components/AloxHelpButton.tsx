@@ -51,7 +51,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
         },
         {
           heading: "How KPI performance is understood",
-          body: "A lower Final KPI means better performance — fewer violations relative to the number of inspections performed, after any staff adjustments are applied. A rising KPI is a signal to take a closer look at that block.",
+          body: "A lower Final KPI means better performance. It starts from violation points, then takes off a clean discount (up to 30%, based on clean ÷ total inspections) and an inspection discount (from 50 inspections, 1% per 10), and finally scales by workload (trucks checked vs. 40 per team member). Blocks with nothing entered show \"No data\" and are not ranked. A rising KPI is a signal to take a closer look at that block.",
         },
       ],
     },
@@ -242,9 +242,10 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
             "Clean Inspections — inspections completed with no violations found.",
             "Total Inspections — every inspection performed in the period (clean plus those with violations).",
             "Violation Points — the total points accumulated from violations recorded during inspections.",
-            "Staff Adjustment — a manual adjustment an admin can apply to account for context the raw numbers don't capture.",
+            "Staff Adj. / Staff % — the workload adjustment: expected trucks (40 per team member) ÷ trucks actually checked, between ×0.5 and ×2. Green means the team checked more than its target.",
+            "Discounts — clean discount (up to 30%, scaled by clean ÷ total inspections) plus inspection discount (from 50 inspections, 1% per 10). Hover the number for the breakdown.",
             "Final KPI — the computed compliance score for the period; lower is better.",
-            "Status — a quick label summarizing how the block is performing (e.g., Excellent, Good, Needs Improvement).",
+            "Status — Perfect (≤ 2), Excellent (≤ 6), Good (≤ 8.9), Poor, or No data when nothing was entered (per month; ×3 for quarters).",
           ],
         },
         {
@@ -303,7 +304,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
       sections: [
         {
           heading: "Editing block numbers",
-          body: "Open a block in edit mode to update its team count, truck count, inspection numbers, violation points, and any staff adjustment for the period. Save your changes and the KPI and reports recalculate automatically.",
+          body: "Click Edit Numbers to update each block's team members, trucks checked, clean and total inspections, and violation points for the month. The KPI preview updates as you type. Save Draft keeps it private to admins; Publish makes it visible to everyone. Use + Add Block or the pencil next to a name to add or rename blocks.",
         },
         {
           heading: "Validation rules",
@@ -320,17 +321,8 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
     match: "/lookup",
     help: {
       title: "Company Lookup",
-      intro: "Company Lookup lets you search for a company or block and review its information in one place.",
-      sections: [
-        {
-          heading: "How to search",
-          body: "Type a company or block name (or part of it) into the search field. Matching results appear as you type — select one to see its details.",
-        },
-        {
-          heading: "What you can check",
-          body: "Once you select a result, you can review its general information along with its recent inspection activity and KPI history, giving you a full picture of how it has been performing.",
-        },
-      ],
+      intro: "Company Lookup is coming soon.",
+      sections: [],
     },
   },
 ];
