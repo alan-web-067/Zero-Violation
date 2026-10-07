@@ -258,3 +258,21 @@ table.data-table td strong { white-space: nowrap; }
 table.data-table td:has(> strong) { white-space: nowrap; }
 table.data-table th,
 table.data-table td { padding-left: 10px; padding-right: 10px; }
+
+/* Alox sits on a soft light "spotlight" disc: the robot PNGs were cut out on white,
+   so their edge halo blends in here instead of showing on the dark green. */
+.ll-root .ll-glow-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #ffffff 0%, #f4fbf7 52%, rgba(226, 244, 234, 0.92) 64%, rgba(226, 244, 234, 0) 72%);
+  box-shadow: 0 0 0 1px rgba(242, 214, 139, 0.35), 0 0 60px 6px rgba(230, 190, 90, 0.18);
+  z-index: 1;
+  pointer-events: none;
+}
+.ll-root .ll-robot-btn { z-index: 2; }
+.ll-root .ll-platform-shadow { z-index: 2; background: radial-gradient(ellipse at center, rgba(6, 78, 46, 0.35) 0%, transparent 68%); }
+/* Hurt / angry speech bubbles keep their colours but match the rounded premium look */
+.ll-root .ll-bubble { box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.45); }
+.ll-root .ll-glow-wrap { margin: 22px 0 18px; }
