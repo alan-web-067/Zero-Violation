@@ -91,6 +91,7 @@ export default function HallOfFameClient() {
                   Best average rank across the year (ranked in at least half the months). Ties go to more #1 finishes.
                 </div>
               </div>
+              <Link href={`/certificate?type=year&year=${year}`} className="btn btn-sm cert-btn">📜 Certificate</Link>
             </div>
 
             <div className="hof-awards">
@@ -122,6 +123,7 @@ export default function HallOfFameClient() {
                             <div className="hof-month-trophy">🏆</div>
                             <Link href={blockHref(w.id)} className="block-link hof-month-winner">{w.name}</Link>
                             <div className="hof-month-kpi">KPI {w.kpi.finalKpi.toFixed(2)}</div>
+                            <Link href={`/certificate?type=month&year=${year}&month=${month}`} className="hof-month-cert" title="Printable certificate">📜 Certificate</Link>
                           </>
                         ) : (
                           <div className="hof-month-kpi">—</div>

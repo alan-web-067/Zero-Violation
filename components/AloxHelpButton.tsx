@@ -197,7 +197,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
         },
         {
           heading: "Monthly champions",
-          body: "The #1 block of every month. Click any block name to open its profile and achievements.",
+          body: "The #1 block of every month. Click any block name to open its profile and achievements, or 📜 Certificate for a printable award.",
         },
       ],
     },

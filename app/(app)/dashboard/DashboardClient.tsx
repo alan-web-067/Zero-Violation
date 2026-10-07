@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, ReferenceLine,
@@ -263,6 +264,18 @@ export default function DashboardClient() {
   // the existing trend fetch — see loadTrend). Counts consecutive months,
   // ending at the selected month, that share the block's current status.
   // Only meaningful in month view, since the history is keyed by calendar month.
+  // Rank change per block between the previous and the selected period (ranked blocks only).
+  const movers = useMemo(() => {
+    const prev = new Map(rankedOnly(prevSorted).map((r, i) => [r.id, i + 1]));
+    const changes = rankedOnly(sorted)
+      .map((r, i) => ({ id: r.id, name: r.name, from: prev.get(r.id) ?? 0, to: i + 1 }))
+      .filter((m) => m.from > 0 && m.from !== m.to);
+    return {
+      up: changes.filter((m) => m.from > m.to).sort((a, b) => (b.from - b.to) - (a.from - a.to)).slice(0, 3),
+      down: changes.filter((m) => m.from < m.to).sort((a, b) => (b.to - b.from) - (a.to - a.from)).slice(0, 3),
+    };
+  }, [sorted, prevSorted]);
+
   function streakBadge(name: string): { emoji: string; label: string } | null {
     if (!ENABLE_STREAK_BADGES || period.view !== "month") return null;
     const hist = statusHistory[name];
@@ -408,6 +421,15 @@ export default function DashboardClient() {
                 Why: {kpiReasons(winner).join(" · ")}
               </div>
             </div>
+            {!unpublished && (
+              <Link
+                href={`/certificate?type=${period.view}&year=${period.year}&month=${period.month}&quarter=${period.quarter}`}
+                className="btn btn-sm cert-btn"
+                title="Open a printable certificate for the winner"
+              >
+                📜 Certificate
+              </Link>
+            )}
           </div>
         )}
 
@@ -608,6 +630,40 @@ export default function DashboardClient() {
             </div>
           </div>
         </div>
+
+        {/* Biggest movers — rank change vs the previous period */}
+        {!loading && movers.up.length + movers.down.length > 0 && (
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div className="card-header">
+              <h2 className="card-title">🚀 Biggest Movers</h2>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
+                Rank change vs {period.view === "quarter" ? "last quarter" : "last month"}
+              </span>
+            </div>
+            <div className="card-body movers">
+              <div>
+                <div className="movers-head up">▲ Climbed</div>
+                {movers.up.length ? movers.up.map((m) => (
+                  <Link key={m.id} href={`/blocks/${encodeURIComponent(m.id)}`} className="mover-row">
+                    <span className="mover-name">{m.name}</span>
+                    <span className="mover-ranks">#{m.from} → #{m.to}</span>
+                    <span className="mover-delta up">▲ {m.from - m.to}</span>
+                  </Link>
+                )) : <div className="mover-empty">No block moved up.</div>}
+              </div>
+              <div>
+                <div className="movers-head down">▼ Dropped</div>
+                {movers.down.length ? movers.down.map((m) => (
+                  <Link key={m.id} href={`/blocks/${encodeURIComponent(m.id)}`} className="mover-row">
+                    <span className="mover-name">{m.name}</span>
+                    <span className="mover-ranks">#{m.from} → #{m.to}</span>
+                    <span className="mover-delta down">▼ {m.to - m.from}</span>
+                  </Link>
+                )) : <div className="mover-empty">No block moved down.</div>}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* KPI Trend */}
         <div className="card">
