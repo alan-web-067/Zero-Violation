@@ -1,7 +1,8 @@
-// Little "bonk + beep-boop" played when someone hits Alox on the login page.
-// Synthesized with the Web Audio API — no audio files to download.
-// `level` (0, 1, 2…) is how many times Alox has been hit: the reply gets lower
-// and grumpier each time.
+// Alox's voice on the login page: a "bonk" when he is hit, then he says his
+// speech-bubble line out loud with a matching emotion (crying, worried, angry…).
+// Everything is synthesized in the browser (Web Audio + speech) — no audio files.
+
+export type Mood = "happy" | "sad" | "worried" | "angry" | "furious" | "excited";
 
 export const ROBOT_SOUND_KEY = "zv_robot_sound";
 
@@ -11,13 +12,21 @@ export function robotSoundEnabled(): boolean {
 
 export function setRobotSoundEnabled(on: boolean) {
   try { localStorage.setItem(ROBOT_SOUND_KEY, on ? "on" : "off"); } catch { /* storage unavailable */ }
-  if (!on && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+  if (!on) stopTalking();
 }
 
 let ctx: AudioContext | null = null;
 
-// Chrome fills the voice list asynchronously — ask early so the first hit already has a nice voice.
+// Chrome fills the voice list asynchronously — ask early so the first line already has the right voice.
 if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.getVoices();
+
+// Browsers only allow sound after the visitor clicks or types on the page.
+let interacted = false;
+if (typeof window !== "undefined") {
+  const mark = () => { interacted = true; };
+  window.addEventListener("pointerdown", mark, { once: true, capture: true });
+  window.addEventListener("keydown", mark, { once: true, capture: true });
+}
 
 function audio(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -28,65 +37,83 @@ function audio(): AudioContext | null {
   return ctx;
 }
 
-function tone(ac: AudioContext, type: OscillatorType, from: number, to: number, start: number, dur: number, vol: number) {
+function tone(ac: AudioContext, type: OscillatorType, from: number, to: number, start: number, dur: number, vol: number, vibrato = 0) {
   const osc = ac.createOscillator();
   const gain = ac.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(from, start);
   osc.frequency.exponentialRampToValueAtTime(Math.max(to, 1), start + dur);
+  if (vibrato) {
+    const lfo = ac.createOscillator();
+    const depth = ac.createGain();
+    lfo.frequency.value = 9;
+    depth.gain.value = vibrato;
+    lfo.connect(depth).connect(osc.frequency);
+    lfo.start(start);
+    lfo.stop(start + dur + 0.02);
+  }
   gain.gain.setValueAtTime(0.0001, start);
-  gain.gain.exponentialRampToValueAtTime(vol, start + 0.01);
+  gain.gain.exponentialRampToValueAtTime(vol, start + 0.02);
   gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
   osc.connect(gain).connect(ac.destination);
   osc.start(start);
   osc.stop(start + dur + 0.02);
 }
 
-export function playRobotHit(level: number, text: string) {
-  if (!robotSoundEnabled()) return;
-  const ac = audio();
-  if (!ac) return;
-  const t = ac.currentTime + 0.01;
-
-  // Metallic bonk: quick pitch drop + a short burst of noise.
-  tone(ac, "triangle", 420, 90, t, 0.18, 0.35);
-  const noise = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.06), ac.sampleRate);
-  const data = noise.getChannelData(0);
-  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+function noiseBurst(ac: AudioContext, start: number, dur: number, vol: number, filter: BiquadFilterType, freq: number, swell = false) {
+  const buf = ac.createBuffer(1, Math.floor(ac.sampleRate * dur), ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    const env = swell ? Math.sin((i / data.length) * Math.PI) : 1 - i / data.length;
+    data[i] = (Math.random() * 2 - 1) * env;
+  }
   const src = ac.createBufferSource();
-  const ng = ac.createGain();
-  ng.gain.value = 0.12;
-  src.buffer = noise;
-  src.connect(ng).connect(ac.destination);
-  src.start(t);
+  const f = ac.createBiquadFilter();
+  const g = ac.createGain();
+  f.type = filter;
+  f.frequency.value = freq;
+  g.gain.value = vol;
+  src.buffer = buf;
+  src.connect(f).connect(g).connect(ac.destination);
+  src.start(start);
+}
 
-  // Robot reply: Alox says it out loud (browser voice). Falls back to beeps where speech isn't available.
-  const grumpy = Math.min(level, 6);
-  if (!speak(text, grumpy)) {
-    const base = 880 - grumpy * 90;
-    const wave: OscillatorType = grumpy >= 4 ? "sawtooth" : "square";
-    tone(ac, wave, base, base * 0.92, t + 0.2, 0.11, 0.07);
-    tone(ac, wave, base * 0.75, base * (grumpy >= 3 ? 0.4 : 0.7), t + 0.33, 0.18, 0.07);
+function bonk(ac: AudioContext, t: number) {
+  tone(ac, "triangle", 420, 90, t, 0.18, 0.35);
+  noiseBurst(ac, t, 0.06, 0.12, "lowpass", 4000);
+}
+
+// Three shaky little sobs ("huh-huh-huh") with a breath on each.
+function sobs(ac: AudioContext, t: number) {
+  for (let i = 0; i < 3; i++) {
+    const s = t + i * 0.2;
+    tone(ac, "triangle", 560 - i * 30, 380, s, 0.15, 0.16, 28);
+    noiseBurst(ac, s, 0.12, 0.05, "bandpass", 1400, true);
   }
 }
 
-// Browsers only allow sound after the visitor clicks or types on the page.
-let interacted = false;
-if (typeof window !== "undefined") {
-  const mark = () => { interacted = true; };
-  window.addEventListener("pointerdown", mark, { once: true, capture: true });
-  window.addEventListener("keydown", mark, { once: true, capture: true });
+// A wet sniffle: two short rising breaths of filtered noise.
+function sniffle(ac: AudioContext, t: number) {
+  noiseBurst(ac, t, 0.16, 0.22, "highpass", 2200, true);
+  noiseBurst(ac, t + 0.22, 0.24, 0.26, "highpass", 2600, true);
 }
 
-// Each introduction line is spoken once per visit, so Alox doesn't repeat himself every few seconds.
-const spokenTips = new Set<string>();
+// --- Speech -----------------------------------------------------------------
 
-// Alox reads one of his normal (introduction) lines out loud.
-export function sayLine(text: string) {
-  if (!interacted || !robotSoundEnabled() || spokenTips.has(text)) return;
-  spokenTips.add(text);
-  speak(text, 0);
+// The voice the earlier version used (the one people liked), then any English voice.
+function pickVoice(): SpeechSynthesisVoice | null {
+  const english = window.speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith("en"));
+  return english.find((v) => /google us english|samantha|zira|aria|jenny/i.test(v.name)) ?? english[0] ?? null;
 }
+
+const VOICE: Record<Mood, { pitch: number; rate: number }> = {
+  happy:   { pitch: 1.6,  rate: 1.08 },
+  sad:     { pitch: 1.75, rate: 0.8 },
+  worried: { pitch: 1.45, rate: 1.18 },
+  angry:   { pitch: 0.85, rate: 1.0 },
+  furious: { pitch: 0.45, rate: 0.9 },
+  excited: { pitch: 1.95, rate: 1.2 },
+};
 
 // Drop the leading emoji and spell out short forms so the voice reads the bubble naturally.
 function speakable(text: string): string {
@@ -98,38 +125,86 @@ function speakable(text: string): string {
     .trim();
 }
 
-// Most human-sounding English voice the device offers: Edge/Windows "Natural"
-// neural voices first, then Google and Apple voices, then any English voice.
-const VOICE_PREFERENCE = [
-  /natural/i, /online/i, /neural/i,
-  /google uk english male/i, /google us english/i,
-  /daniel|alex|aaron|arthur|samantha|karen/i,
-  /guy|christopher|eric|davis|andrew|brian|ryan/i,
-];
+// Every new line bumps this, so anything still scheduled from an older line is skipped.
+let talkId = 0;
 
-function bestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  const english = voices.filter((v) => v.lang.toLowerCase().startsWith("en"));
-  for (const re of VOICE_PREFERENCE) {
-    const hit = english.find((v) => re.test(v.name));
-    if (hit) return hit;
-  }
-  return english[0] ?? null;
+function stopTalking() {
+  talkId++;
+  if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
 }
 
-function speak(text: string, level: number): boolean {
+function utter(text: string, pitch: number, rate: number, voice: SpeechSynthesisVoice | null) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.pitch = Math.min(2, Math.max(0.1, pitch));
+  u.rate = rate;
+  u.volume = 1;
+  u.voice = voice;
+  return u;
+}
+
+// Says `text` with the mood's voice. `delayMs` leaves room for the bonk / sobs first.
+function speak(text: string, mood: Mood, delayMs: number, onDone?: () => void): boolean {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
-  const synth = window.speechSynthesis;
   const line = speakable(text);
   if (!line) return false;
-  const say = new SpeechSynthesisUtterance(line);
-  const shout = /siu+/i.test(line);
-  // Stay close to a natural voice: only a gentle drop in pitch as Alox gets annoyed
-  // (big pitch swings are what made it sound robotic). "SIUUU" gets a big, fast shout.
-  say.pitch = shout ? 1.25 : 1.12 - level * 0.05;
-  say.rate = shout ? 1.05 : 1.02 - level * 0.02;
-  say.volume = 1;
-  say.voice = bestVoice(synth.getVoices());
-  synth.cancel();                 // a new hit interrupts the previous line
-  setTimeout(() => synth.speak(say), 180);  // right after the bonk
+  const synth = window.speechSynthesis;
+  stopTalking();
+  const id = talkId;
+  const voice = pickVoice();
+  const { pitch, rate } = VOICE[mood];
+
+  setTimeout(() => {
+    if (id !== talkId) return;
+    if (mood !== "sad") {
+      const u = utter(line, pitch, rate, voice);
+      if (onDone) u.onend = () => { if (id === talkId) onDone(); };
+      synth.speak(u);
+      return;
+    }
+    // Crying: a sobbing repeat of the first word ("Why… why would you…"), then a
+    // trembling voice — every word a little higher or lower than the last, slow.
+    const words = line.split(/\s+/);
+    const first = words[0].replace(/[^A-Za-z']/g, "");
+    if (first.length > 2) words.unshift(`${first}…`);
+    words.forEach((w, i) => {
+      const u = utter(w, pitch + (i % 2 ? -0.22 : 0.12), rate - (i % 3 === 2 ? 0.08 : 0), voice);
+      if (i === words.length - 1 && onDone) u.onend = () => { if (id === talkId) onDone(); };
+      synth.speak(u);
+    });
+  }, delayMs);
   return true;
+}
+
+// Alox reads one of his normal (introduction) lines — once per visit each.
+const spokenTips = new Set<string>();
+
+export function sayLine(text: string) {
+  if (!interacted || !robotSoundEnabled() || spokenTips.has(text)) return;
+  spokenTips.add(text);
+  speak(text, "happy", 0);
+}
+
+// Hit: bonk, then the bubble line in the bubble's mood (crying gets sobs before and a sniffle after).
+export function playRobotHit(text: string, mood: Mood) {
+  if (!robotSoundEnabled()) return;
+  const ac = audio();
+  if (!ac) return;
+  const t = ac.currentTime + 0.01;
+  bonk(ac, t);
+
+  if (mood === "sad") {
+    sobs(ac, t + 0.25);
+    const spoke = speak(text, "sad", 900, () => {
+      const a = audio();
+      if (a && robotSoundEnabled()) sniffle(a, a.currentTime + 0.1);
+    });
+    if (spoke) return;
+  } else if (speak(text, mood, 200)) {
+    return;
+  }
+
+  // No speech in this browser: two little beeps instead.
+  const low = mood === "angry" || mood === "furious";
+  tone(ac, low ? "sawtooth" : "square", low ? 420 : 880, low ? 380 : 820, t + 0.2, 0.11, 0.07);
+  tone(ac, low ? "sawtooth" : "square", low ? 300 : 660, low ? 170 : 600, t + 0.33, 0.18, 0.07);
 }

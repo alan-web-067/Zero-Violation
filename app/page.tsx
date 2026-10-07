@@ -1,6 +1,6 @@
 "use client";
 
-import { playRobotHit, robotSoundEnabled, sayLine, setRobotSoundEnabled } from "@/lib/robotSound";
+import { playRobotHit, robotSoundEnabled, sayLine, setRobotSoundEnabled, type Mood } from "@/lib/robotSound";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -19,15 +19,15 @@ const ROBOT_TIPS = [
 ];
 
 const HIT_MESSAGES = [
-  { text: "🥺 Why would you do that?", img: "/alox/alox-sad.png" },
-  { text: "💔 Safety robots have feelings too.", img: "/alox/alox-hurt.png" },
-  { text: "😢 My circuits are hurt.", img: "/alox/alox-xeyes.png" },
-  { text: "⚠️ Unsafe operation: hitting company mascot.", img: "/alox/alox-warning.png" },
-  { text: "📈 I can make your KPI worse if you keep doing that!", img: "/alox/alox-alert.png" },
-  { text: "😡 One more click and I will raise your points.", img: "/alox/alox-angry.png" },
-  { text: "🤖 I'm not saying I'll increase KPI... but I'm thinking about it.", img: "/alox/alox-rage.png" },
-  { text: "🚨 Robot abuse violation detected.", img: "/alox/alox-robot-abuse.png" },
-  { text: "⚽ SIUUU! Okay, I'm calm now.", img: "/alox/alox-thumbsup.png" },
+  { text: "🥺 Why would you do that?", img: "/alox/alox-sad.png", mood: "sad" as Mood },
+  { text: "💔 Safety robots have feelings too.", img: "/alox/alox-hurt.png", mood: "sad" as Mood },
+  { text: "😢 My circuits are hurt.", img: "/alox/alox-xeyes.png", mood: "sad" as Mood },
+  { text: "⚠️ Unsafe operation: hitting company mascot.", img: "/alox/alox-warning.png", mood: "worried" as Mood },
+  { text: "📈 I can make your KPI worse if you keep doing that!", img: "/alox/alox-alert.png", mood: "angry" as Mood },
+  { text: "😡 One more click and I will raise your points.", img: "/alox/alox-angry.png", mood: "angry" as Mood },
+  { text: "🤖 I'm not saying I'll increase KPI... but I'm thinking about it.", img: "/alox/alox-rage.png", mood: "furious" as Mood },
+  { text: "🚨 Robot abuse violation detected.", img: "/alox/alox-robot-abuse.png", mood: "furious" as Mood },
+  { text: "⚽ SIUUU! Okay, I'm calm now.", img: "/alox/alox-thumbsup.png", mood: "excited" as Mood },
 ];
 
 /* Deterministic particle positions for the hero panel */
@@ -123,7 +123,7 @@ export default function LoginPage() {
     stopNormalRotation();
     if (hitTimerRef.current) { clearTimeout(hitTimerRef.current); hitTimerRef.current = null; }
     const hit = HIT_MESSAGES[hitCount % HIT_MESSAGES.length];
-    playRobotHit(hitCount, hit.text);   // Alox says exactly what the bubble shows
+    playRobotHit(hit.text, hit.mood);   // Alox says the bubble line, in the bubble's mood
     setHitCount((c) => c + 1);
     setRobotMode("hit");
     setRobotMsg(hit.text);
