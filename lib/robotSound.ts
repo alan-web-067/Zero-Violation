@@ -70,13 +70,50 @@ export function playRobotHit(level: number, text: string) {
   }
 }
 
+// Browsers only allow sound after the visitor clicks or types on the page.
+let interacted = false;
+if (typeof window !== "undefined") {
+  const mark = () => { interacted = true; };
+  window.addEventListener("pointerdown", mark, { once: true, capture: true });
+  window.addEventListener("keydown", mark, { once: true, capture: true });
+}
+
+// Each introduction line is spoken once per visit, so Alox doesn't repeat himself every few seconds.
+const spokenTips = new Set<string>();
+
+// Alox reads one of his normal (introduction) lines out loud.
+export function sayLine(text: string) {
+  if (!interacted || !robotSoundEnabled() || spokenTips.has(text)) return;
+  spokenTips.add(text);
+  speak(text, 0);
+}
+
 // Drop the leading emoji and spell out short forms so the voice reads the bubble naturally.
 function speakable(text: string): string {
   return text
     .replace(/^[^\p{L}\p{N}]+/u, "")
+    .replace(/\bSIU+\b/g, "Siuuuuu")
     .replace(/\.{3}/g, ", ")
     .replace(/\bKPI\b/g, "K.P.I.")
     .trim();
+}
+
+// Most human-sounding English voice the device offers: Edge/Windows "Natural"
+// neural voices first, then Google and Apple voices, then any English voice.
+const VOICE_PREFERENCE = [
+  /natural/i, /online/i, /neural/i,
+  /google uk english male/i, /google us english/i,
+  /daniel|alex|aaron|arthur|samantha|karen/i,
+  /guy|christopher|eric|davis|andrew|brian|ryan/i,
+];
+
+function bestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+  const english = voices.filter((v) => v.lang.toLowerCase().startsWith("en"));
+  for (const re of VOICE_PREFERENCE) {
+    const hit = english.find((v) => re.test(v.name));
+    if (hit) return hit;
+  }
+  return english[0] ?? null;
 }
 
 function speak(text: string, level: number): boolean {
@@ -85,12 +122,13 @@ function speak(text: string, level: number): boolean {
   const line = speakable(text);
   if (!line) return false;
   const say = new SpeechSynthesisUtterance(line);
-  // High, quick and cute at first; lower and slower as Alox gets angry.
-  say.pitch = Math.max(0.4, 1.8 - level * 0.22);
-  say.rate = Math.max(0.85, 1.15 - level * 0.05);
+  const shout = /siu+/i.test(line);
+  // Stay close to a natural voice: only a gentle drop in pitch as Alox gets annoyed
+  // (big pitch swings are what made it sound robotic). "SIUUU" gets a big, fast shout.
+  say.pitch = shout ? 1.25 : 1.12 - level * 0.05;
+  say.rate = shout ? 1.05 : 1.02 - level * 0.02;
   say.volume = 1;
-  const english = synth.getVoices().filter((v) => v.lang.toLowerCase().startsWith("en"));
-  say.voice = english.find((v) => /google us english|samantha|zira|aria|jenny/i.test(v.name)) ?? english[0] ?? null;
+  say.voice = bestVoice(synth.getVoices());
   synth.cancel();                 // a new hit interrupts the previous line
   setTimeout(() => synth.speak(say), 180);  // right after the bonk
   return true;

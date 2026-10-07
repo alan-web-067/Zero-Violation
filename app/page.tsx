@@ -1,6 +1,6 @@
 "use client";
 
-import { playRobotHit, robotSoundEnabled, setRobotSoundEnabled } from "@/lib/robotSound";
+import { playRobotHit, robotSoundEnabled, sayLine, setRobotSoundEnabled } from "@/lib/robotSound";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -27,6 +27,7 @@ const HIT_MESSAGES = [
   { text: "😡 One more click and I will raise your points.", img: "/alox/alox-angry.png" },
   { text: "🤖 I'm not saying I'll increase KPI... but I'm thinking about it.", img: "/alox/alox-rage.png" },
   { text: "🚨 Robot abuse violation detected.", img: "/alox/alox-robot-abuse.png" },
+  { text: "⚽ SIUUU! Okay, I'm calm now.", img: "/alox/alox-thumbsup.png" },
 ];
 
 /* Deterministic particle positions for the hero panel */
@@ -64,6 +65,27 @@ export default function LoginPage() {
   function stopNormalRotation() {
     if (normalTimerRef.current) { clearInterval(normalTimerRef.current); normalTimerRef.current = null; }
   }
+
+  // Alox reads his introduction lines out loud as they appear (hit lines are spoken in handleRobotHit).
+  const introRef = useRef({ msg: "", normal: true });
+  useEffect(() => {
+    introRef.current = { msg: robotMsg, normal: robotMode === "normal" };
+    if (robotMode === "normal") sayLine(robotMsg);
+  }, [robotMsg, robotMode]);
+
+  // Sound can only start after the first click or key press — say the current line then.
+  useEffect(() => {
+    const onFirst = (e: Event) => {
+      if ((e.target as Element | null)?.closest?.(".ll-robot-btn, .ll-sound-btn")) return;
+      if (introRef.current.normal) sayLine(introRef.current.msg);
+    };
+    window.addEventListener("pointerdown", onFirst, { once: true });
+    window.addEventListener("keydown", onFirst, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", onFirst);
+      window.removeEventListener("keydown", onFirst);
+    };
+  }, []);
 
   function startNormalRotation() {
     stopNormalRotation();
