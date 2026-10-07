@@ -108,10 +108,10 @@ function pickVoice(): SpeechSynthesisVoice | null {
 
 const VOICE: Record<Mood, { pitch: number; rate: number }> = {
   happy:   { pitch: 1.6,  rate: 1.08 },
-  sad:     { pitch: 1.75, rate: 0.8 },
+  sad:     { pitch: 1.7,  rate: 0.85 },
   worried: { pitch: 1.45, rate: 1.18 },
   angry:   { pitch: 0.85, rate: 1.0 },
-  furious: { pitch: 0.45, rate: 0.9 },
+  furious: { pitch: 0.6,  rate: 0.92 },
   excited: { pitch: 1.95, rate: 1.2 },
 };
 
@@ -155,22 +155,16 @@ function speak(text: string, mood: Mood, delayMs: number, onDone?: () => void): 
 
   setTimeout(() => {
     if (id !== talkId) return;
-    if (mood !== "sad") {
-      const u = utter(line, pitch, rate, voice);
-      if (onDone) u.onend = () => { if (id === talkId) onDone(); };
-      synth.speak(u);
-      return;
+    // Crying lines repeat the first word with a pause ("Why… why would you…"),
+    // said smoothly in one go — the sobs and sniffle around it carry the crying.
+    let said = line;
+    if (mood === "sad") {
+      const first = line.split(/\s+/)[0].replace(/[^A-Za-z']/g, "");
+      if (first.length > 2) said = `${first}… ${line.charAt(0).toLowerCase()}${line.slice(1)}`;
     }
-    // Crying: a sobbing repeat of the first word ("Why… why would you…"), then a
-    // trembling voice — every word a little higher or lower than the last, slow.
-    const words = line.split(/\s+/);
-    const first = words[0].replace(/[^A-Za-z']/g, "");
-    if (first.length > 2) words.unshift(`${first}…`);
-    words.forEach((w, i) => {
-      const u = utter(w, pitch + (i % 2 ? -0.22 : 0.12), rate - (i % 3 === 2 ? 0.08 : 0), voice);
-      if (i === words.length - 1 && onDone) u.onend = () => { if (id === talkId) onDone(); };
-      synth.speak(u);
-    });
+    const u = utter(said, pitch, rate, voice);
+    if (onDone) u.onend = () => { if (id === talkId) onDone(); };
+    synth.speak(u);
   }, delayMs);
   return true;
 }
