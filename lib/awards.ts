@@ -93,7 +93,7 @@ export function yearAwards(year: RankedMonth[]): { teamOfYear: BlockYear | null;
   add("streak", "🔥", "Longest winning streak", pick((b) => (b.bestStreak >= 2 ? b.bestStreak : null)), (b) => `${b.bestStreak} months in a row`, "Most consecutive months at #1.");
   add("improved", "📈", "Most improved", pick((b) => b.improvement), (b) => `−${b.improvement!.toFixed(2)} Final KPI`, "Biggest drop in Final KPI from its first 3 months to its last 3.");
   add("perfect", "💎", "Most Perfect months", pick((b) => b.perfectMonths), (b) => `${b.perfectMonths} Perfect month${b.perfectMonths === 1 ? "" : "s"}`, "Most months with status Perfect.");
-  add("inspections", "🔍", "Inspection champion", pick((b) => b.inspections), (b) => `${b.inspections.toLocaleString()} inspections`, "Most inspections across the year.");
+  add("inspections", "🔍", "Inspection champion", pick((b) => b.inspections), (b) => `${b.inspections.toLocaleString("en-US")} inspections`, "Most inspections across the year.");
   add("clean", "✨", "Cleanest record",
     pick((b) => (b.inspections >= MIN_CLEAN_RATE_INSPECTIONS ? b.clean / b.inspections : null)),
     (b) => `${Math.round((b.clean / b.inspections) * 100)}% clean`, `Highest share of clean inspections (at least ${MIN_CLEAN_RATE_INSPECTIONS} inspections).`);

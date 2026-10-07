@@ -2,14 +2,19 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
-import * as ScrollArea from "@radix-ui/react-scroll-area";
-import { X, Send, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
-import { apiClient } from "@/lib/apiClient";
+import { X, Send, RotateCcw, ArrowRight, Sparkles } from "lucide-react";
+import { apiClient, ME_KEY } from "@/lib/apiClient";
+
+type ChatLink = { href: string; label: string };
 
 type ChatMessage = {
   role: "user" | "alox";
   text: string;
+  link?: ChatLink | null;
+  suggestions?: string[];
+  error?: boolean;
 };
 
 // PHASE1 FEATURE — lets other pages (e.g. the Dashboard's "Ask Alox"
@@ -31,69 +36,119 @@ export function openAloxChat() {
   window.dispatchEvent(new CustomEvent(ALOX_OPEN_CHAT_EVENT));
 }
 
-const QUESTION_GROUPS = [
+const QUESTION_GROUPS: Array<{ title: string; questions: string[] }> = [
   {
     title: "Performance",
     questions: [
       "Which block is performing best?",
       "Which block needs attention?",
-      "Show current leaderboard",
-      "What is the average KPI?",
-      "Which blocks are perfect?",
       "Show top 3 blocks",
-      "Show weakest block",
-    ],
-  },
-  {
-    title: "Summary",
-    questions: [
-      "Give me dashboard summary",
-      "What happened this month?",
-      "Show monthly summary",
-      "Show active blocks",
-      "Show violation ranking",
+      "Show current leaderboard",
+      "Which blocks are perfect?",
+      "What is the average KPI?",
       "Which block has most violations?",
     ],
   },
   {
-    title: "Pages",
+    title: "Trends & awards",
     questions: [
-      "Explain dashboard page",
-      "Explain reports page",
-      "Explain analytics page",
-      "Explain admin page",
-      "What can I edit?",
-      "How is ranking calculated?",
+      "Who is Team of the Year?",
+      "Who climbed the most?",
+      "Give me dashboard summary",
+      "Show violation ranking",
+      "Show active blocks",
     ],
   },
   {
-    title: "About",
+    title: "How it works",
     questions: [
-      "Who are you?",
-      "What can you answer?",
-      "How can you help me?",
+      "How is the KPI calculated?",
+      "What can I edit?",
+      "Explain Hall of Fame",
+      "Explain block profile",
+      "Explain My Workspace",
+      "Explain reports page",
     ],
   },
 ];
+
+const STARTERS = [
+  { icon: "🏆", q: "Which block is performing best?" },
+  { icon: "⚠️", q: "Which block needs attention?" },
+  { icon: "🚀", q: "Who climbed the most?" },
+  { icon: "🏛️", q: "Who is Team of the Year?" },
+];
+
+const HISTORY_KEY = "zv_alox_history";
+const MAX_HISTORY = 40;
+
+function loadHistory(): ChatMessage[] {
+  try {
+    const raw = sessionStorage.getItem(HISTORY_KEY);
+    const list = raw ? (JSON.parse(raw) as ChatMessage[]) : [];
+    return Array.isArray(list) ? list.slice(-MAX_HISTORY) : [];
+  } catch { return []; }
+}
+
+function firstName(): string {
+  try {
+    const me = JSON.parse(localStorage.getItem(ME_KEY) ?? "null");
+    return typeof me?.username === "string" ? me.username : "";
+  } catch { return ""; }
+}
+
+// Plain-text answers → paragraphs and bullet/numbered lists.
+function AloxText({ text }: { text: string }) {
+  const blocks: React.ReactNode[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
+  const flush = () => {
+    if (!list) return;
+    const items = list.items.map((it, i) => <li key={i}>{it}</li>);
+    blocks.push(list.ordered ? <ol key={blocks.length}>{items}</ol> : <ul key={blocks.length}>{items}</ul>);
+    list = null;
+  };
+  for (const line of text.split("\n")) {
+    const t = line.trim();
+    if (!t) { flush(); continue; }
+    const num = t.match(/^\d+\.\s+(.*)$/);
+    const bullet = t.match(/^[-•]\s+(.*)$/);
+    if (num || bullet) {
+      const ordered = !!num;
+      if (!list || list.ordered !== ordered) { flush(); list = { ordered, items: [] }; }
+      list.items.push((num ?? bullet)![1]);
+    } else {
+      flush();
+      blocks.push(<p key={blocks.length}>{t}</p>);
+    }
+  }
+  flush();
+  return <>{blocks}</>;
+}
 
 export default function AloxChat() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryTab, setLibraryTab] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "alox", text: "Hello, I am Alox. I can answer questions about your dashboard data." },
-  ]);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => (typeof window === "undefined" ? [] : loadHistory()));
+  const [period, setPeriod] = useState<string | null>(null);
+  const [name] = useState(() => (typeof window === "undefined" ? "" : firstName()));
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const focusInput = useCallback(() => {
     setTimeout(() => inputRef.current?.focus(), 80);
   }, []);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, loading, open]);
+
+  useEffect(() => {
+    try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(messages.slice(-MAX_HISTORY))); } catch { /* storage unavailable */ }
+  }, [messages]);
 
   // PHASE1 FEATURE — opens this panel and sends the pre-filled question when
   // another page asks Alox something on the user's behalf (see askAlox /
@@ -136,22 +191,38 @@ export default function AloxChat() {
         method: "POST",
         body: JSON.stringify({ message: userText }),
       });
+      if (data.period) setPeriod(data.period);
       setMessages((prev) => [
         ...prev,
-        { role: "alox", text: data.reply || "Alox could not answer this question yet." },
+        {
+          role: "alox",
+          text: data.reply || "Alox could not answer this question yet.",
+          link: data.link ?? null,
+          suggestions: Array.isArray(data.suggestions) ? data.suggestions : [],
+        },
       ]);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { role: "alox", text: err instanceof Error && err.message ? err.message : "Connection error. Please try again." },
+        { role: "alox", error: true, text: err instanceof Error && err.message ? err.message : "Connection error. Please try again." },
       ]);
     } finally {
       setLoading(false);
+      focusInput();
     }
   }
 
+  function clearChat() {
+    setMessages([]);
+    setLibraryOpen(false);
+    focusInput();
+  }
+
+  const lastAlox = [...messages].reverse().find((m) => m.role === "alox");
+  const empty = messages.length === 0;
+
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={(v) => { setOpen(v); if (v) focusInput(); }}>
       <Dialog.Trigger asChild>
         <button type="button" className="alox-trigger">
           <Image src="/alox/alox-neutral.png" alt="" width={22} height={22} className="alox-trigger-avatar" />
@@ -160,101 +231,136 @@ export default function AloxChat() {
       </Dialog.Trigger>
 
       <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="alox-panel" aria-describedby={undefined}>
+        <Dialog.Overlay className="dialog-overlay ax-overlay" />
+        <Dialog.Content className="alox-panel ax-panel" aria-describedby={undefined}>
           {/* Header */}
-          <div className="alox-header">
-            <div className="alox-header-identity">
-              <Image src="/alox/alox-neutral.png" alt="" width={36} height={36} className="alox-chat-avatar" />
-              <div>
-                <Dialog.Title className="alox-title">Alox Chat</Dialog.Title>
-                <p className="alox-subtitle">KPI adviser assistant</p>
-              </div>
+          <div className="ax-header">
+            <div className="ax-avatar-wrap">
+              <Image src="/alox/alox-neutral.png" alt="" width={40} height={40} className="ax-avatar" />
+              <span className="ax-online" aria-hidden />
             </div>
+            <div className="ax-heading">
+              <Dialog.Title className="ax-title">Alox</Dialog.Title>
+              <p className="ax-subtitle">{period ? `KPI assistant · data: ${period}` : "KPI assistant · always on"}</p>
+            </div>
+            {!empty && (
+              <button type="button" className="ax-icon-btn" onClick={clearChat} title="New chat" aria-label="New chat">
+                <RotateCcw size={15} />
+              </button>
+            )}
             <Dialog.Close asChild>
-              <button type="button" className="btn btn-ghost btn-icon" aria-label="Close">
-                <X size={15} />
+              <button type="button" className="ax-icon-btn" aria-label="Close">
+                <X size={16} />
               </button>
             </Dialog.Close>
           </div>
 
           {/* Messages */}
-          <ScrollArea.Root className="alox-messages scroll-area-root">
-            <ScrollArea.Viewport className="alox-messages-viewport scroll-area-viewport">
-              {messages.map((msg, i) => (
-                <div key={i} className={`alox-msg alox-msg-${msg.role}`}>
-                  {msg.text}
+          <div className="ax-scroll" ref={scrollRef}>
+            {empty ? (
+              <div className="ax-welcome">
+                <div className="ax-welcome-badge"><Sparkles size={13} /> Ask about your blocks</div>
+                <h3>Hi{name ? ` ${name}` : ""} 👋</h3>
+                <p>I read the latest published results and answer questions about blocks, rankings, awards and how the score works.</p>
+                <div className="ax-starters">
+                  {STARTERS.map((s) => (
+                    <button key={s.q} type="button" className="ax-starter" onClick={() => sendMessage(s.q)} disabled={loading}>
+                      <span className="ax-starter-icon">{s.icon}</span>
+                      <span>{s.q}</span>
+                    </button>
+                  ))}
                 </div>
-              ))}
-              {loading && (
-                <div className="alox-msg alox-msg-alox alox-msg-loading">
-                  Alox is checking data…
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </ScrollArea.Viewport>
-            <ScrollArea.Scrollbar orientation="vertical" className="scroll-area-scrollbar">
-              <ScrollArea.Thumb className="scroll-area-thumb" />
-            </ScrollArea.Scrollbar>
-          </ScrollArea.Root>
-
-          {/* Questions Library */}
-          <div className="alox-library">
-            <button
-              type="button"
-              className={`alox-library-toggle${libraryOpen ? " alox-library-open" : ""}`}
-              onClick={() => setLibraryOpen((v) => !v)}
-            >
-              <BookOpen size={13} />
-              <span>Questions Alox Can Answer</span>
-              {libraryOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            </button>
-
-            {libraryOpen && (
-              <div className="alox-library-body">
-                {QUESTION_GROUPS.map((group) => (
-                  <div key={group.title}>
-                    <div className="alox-question-group-title">{group.title}</div>
-                    <div className="alox-question-chips">
-                      {group.questions.map((q) => (
-                        <button
-                          key={q}
-                          type="button"
-                          className="alox-chip"
-                          onClick={() => sendMessage(q)}
-                          disabled={loading}
-                        >
-                          {q}
-                        </button>
-                      ))}
+              </div>
+            ) : (
+              messages.map((msg, i) => (
+                <div key={i} className={`ax-row ax-row-${msg.role}`}>
+                  {msg.role === "alox" && (
+                    <Image src="/alox/alox-neutral.png" alt="" width={26} height={26} className="ax-row-avatar" />
+                  )}
+                  <div className="ax-col">
+                    <div className={`ax-bubble ax-bubble-${msg.role}${msg.error ? " ax-bubble-error" : ""}`}>
+                      {msg.role === "alox" ? <AloxText text={msg.text} /> : msg.text}
                     </div>
+                    {msg.role === "alox" && msg.link && (
+                      <Link href={msg.link.href} className="ax-link" onClick={() => setOpen(false)}>
+                        {msg.link.label} <ArrowRight size={13} />
+                      </Link>
+                    )}
+                    {msg === lastAlox && !loading && msg.suggestions && msg.suggestions.length > 0 && (
+                      <div className="ax-followups">
+                        {msg.suggestions.map((q) => (
+                          <button key={q} type="button" className="ax-chip" onClick={() => sendMessage(q)}>{q}</button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ))}
+                </div>
+              ))
+            )}
+            {loading && (
+              <div className="ax-row ax-row-alox">
+                <Image src="/alox/alox-neutral.png" alt="" width={26} height={26} className="ax-row-avatar" />
+                <div className="ax-bubble ax-bubble-alox ax-typing" aria-label="Alox is typing">
+                  <span /><span /><span />
+                </div>
               </div>
             )}
           </div>
 
+          {/* Questions library */}
+          {libraryOpen && (
+            <div className="ax-library">
+              <div className="ax-tabs" role="tablist">
+                {QUESTION_GROUPS.map((g, i) => (
+                  <button key={g.title} type="button" role="tab" aria-selected={libraryTab === i}
+                    className={`ax-tab${libraryTab === i ? " active" : ""}`} onClick={() => setLibraryTab(i)}>
+                    {g.title}
+                  </button>
+                ))}
+              </div>
+              <div className="ax-library-chips">
+                {QUESTION_GROUPS[libraryTab].questions.map((q) => (
+                  <button key={q} type="button" className="ax-chip" onClick={() => sendMessage(q)} disabled={loading}>{q}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Input */}
-          <div className="alox-input-area">
-            <input
+          <div className="ax-composer">
+            <button
+              type="button"
+              className={`ax-library-btn${libraryOpen ? " active" : ""}`}
+              onClick={() => setLibraryOpen((v) => !v)}
+              title="Question ideas"
+              aria-label="Question ideas"
+              aria-expanded={libraryOpen}
+            >
+              <Sparkles size={16} />
+            </button>
+            <textarea
               ref={inputRef}
+              rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Ask Alox…"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+              }}
+              placeholder="Ask Alox anything about your blocks…"
               disabled={loading}
-              className="alox-input"
+              className="ax-input"
             />
             <button
               type="button"
               onClick={() => sendMessage()}
               disabled={loading || !input.trim()}
-              className="btn btn-primary"
-              style={{ padding: "9px 14px" }}
+              className="ax-send"
+              aria-label="Send"
             >
-              <Send size={14} />
+              <Send size={15} />
             </button>
           </div>
+          <div className="ax-footnote">Answers use published results only.</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

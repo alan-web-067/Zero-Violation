@@ -43,7 +43,7 @@ export default function CertificateClient() {
               lines: [
                 `Average monthly rank #${teamOfYear.avgRank.toFixed(1)}`,
                 `${teamOfYear.wins} month${teamOfYear.wins === 1 ? "" : "s"} at #1`,
-                `${teamOfYear.inspections.toLocaleString()} inspections`,
+                `${teamOfYear.inspections.toLocaleString("en-US")} inspections`,
               ],
             };
           }
