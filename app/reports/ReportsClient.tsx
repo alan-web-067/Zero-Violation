@@ -369,7 +369,7 @@ export default function ReportsClient() {
       csvRow(["Generated", `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`]),
       "",
       csvRow(["Winner Block", `${winner.name} (Final KPI ${winner.kpi.finalKpi.toFixed(2)})`]),
-      csvRow(["Needs Improvement Block", `${needsImprovement.name} (Final KPI ${needsImprovement.kpi.finalKpi.toFixed(2)})`]),
+      csvRow(["Needs Improvement Block", needsImprovement !== winner ? `${needsImprovement.name} (Final KPI ${needsImprovement.kpi.finalKpi.toFixed(2)})` : "—"]),
       csvRow(["Average KPI", avgKpi.toFixed(2)]),
       csvRow(["Active Blocks", activeBlocks]),
       "",
@@ -381,13 +381,13 @@ export default function ReportsClient() {
       "Total Inspections","Violation Points","Staff Adj.","Staff %",
       "Clean Adj.","Inspection Bonus","After Clean","Final KPI","Status",
     ];
-    lines.push(header.join(","));
+    lines.push(csvRow(header));
     sorted.forEach((r, idx) => {
-      lines.push([
-        idx + 1, r.name, r.teamMembers, r.trucks, r.cleanInspections,
+      lines.push(csvRow([
+        r.kpi.noData ? "—" : idx + 1, r.name, r.teamMembers, r.trucks, r.cleanInspections,
         r.totalInspections, r.kpi.violPoint, r.kpi.staffDelta, fmtPct(r.kpi.staffPercent),
         r.kpi.cleanDelta, r.kpi.inspectionDelta, r.kpi.afterClean, r.kpi.finalKpi, r.kpi.status,
-      ].join(","));
+      ]));
     });
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url  = URL.createObjectURL(blob);

@@ -139,9 +139,11 @@ export default function AdminClient() {
         method: "POST",
         body: JSON.stringify({ year: Number(period.year), month: Number(period.month), data: draftRows ?? baseRows }),
       });
+      // Saved — Cancel should now return to these numbers, not the pre-edit ones.
+      setBaseRows(structuredClone(draftRows ?? baseRows));
       setToast("Draft saved ✅");
-    } catch {
-      setToast("Error saving draft ❌");
+    } catch (err) {
+      setToast(`Error saving draft ❌ ${err instanceof Error ? err.message : ""}`);
     } finally {
       setSaving(false);
     }
@@ -164,8 +166,8 @@ export default function AdminClient() {
       setDraftRows(null);
       setEditMode(false);
       setToast("Published ✅ Viewers can now see this data");
-    } catch {
-      setToast("Publish failed ❌");
+    } catch (err) {
+      setToast(`Publish failed ❌ ${err instanceof Error ? err.message : ""}`);
     } finally {
       setSaving(false);
     }
@@ -218,7 +220,8 @@ export default function AdminClient() {
       </div>
 
       <div className="page-body">
-        <PeriodSelector period={period} onChange={handlePeriodChange} disabled={loading || saving} />
+        {/* Locked while editing so switching months can't silently discard unsaved numbers. */}
+        <PeriodSelector period={period} onChange={handlePeriodChange} disabled={loading || saving || editMode} />
 
         {/* Edit mode controls */}
         {period.view === "month" && (

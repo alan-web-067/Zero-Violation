@@ -11,10 +11,10 @@ import { ChevronDown, Check } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
 import {
-  applyKpiToRows, sortByKpi, MONTHS,
+  applyKpiToRows, sortByKpi, rankedOnly, MONTHS,
   RowWithKpi,
 } from "@/lib/kpi";
-import { loadPeriodRows } from "@/lib/useKpiData";
+import { loadPeriodRows, fetchBlockDefs } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
 
@@ -44,6 +44,7 @@ export default function AnalyticsClient() {
   const [isAdmin,      setIsAdmin]      = useState(false);
   const [year,         setYear]         = useState(now.getFullYear());
   const [monthlyData,  setMonthlyData]  = useState<MonthPoint[]>([]);
+  const [monthlyRanks, setMonthlyRanks] = useState<{ best?: { name: string; kpi: number }; worst?: { name: string; kpi: number } }[]>([]);
   const [quarterlyData,setQuarterlyData]= useState<QuarterPoint[]>([]);
   const [blockSnap,    setBlockSnap]    = useState<RowWithKpi[]>([]);
   const [blockNames,   setBlockNames]   = useState<string[]>([]);
@@ -72,10 +73,8 @@ export default function AnalyticsClient() {
       // PERMISSIONS FIX — super_admin gets the same draft-scope visibility as admin.
       const admin = isFullAdmin(role as Role);
       setIsAdmin(admin);
-      try {
-        const reg = await apiClient("/api/blocks");
-        setBlockNames((reg.blocks || []).map((b: { name: string }) => b.name));
-      } catch { /* fall back to whatever loadAll discovers from rows */ }
+      // Shared, cached block list (also used by loadPeriodRows) — no extra request.
+      fetchBlockDefs().then((defs) => setBlockNames(defs.filter((d) => d.status === "active").map((d) => d.name)));
       await loadAll(now.getFullYear(), admin);
     } catch {
       router.replace("/");
@@ -92,7 +91,10 @@ export default function AnalyticsClient() {
             const withKpi = sortByKpi(applyKpiToRows(rows));
             const pt: MonthPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
             withKpi.forEach((r) => { if (!r.kpi.noData) pt[r.name] = r.kpi.finalKpi; });
-            return pt;
+            // Best/worst use the same ranking (incl. tie-breakers) as the Leaderboard.
+            const ranked = rankedOnly(withKpi);
+            const pick = (r?: RowWithKpi) => (r ? { name: r.name, kpi: r.kpi.finalKpi } : undefined);
+            return { pt, best: pick(ranked[0]), worst: ranked.length > 1 ? pick(ranked[ranked.length - 1]) : undefined };
           })
         ),
         Promise.all(
@@ -108,9 +110,10 @@ export default function AnalyticsClient() {
           year: y, month: now.getMonth() + 1, quarter: Math.floor(now.getMonth() / 3) + 1, view: "month",
         }, admin),
       ]);
-      setMonthlyData(monthly);
+      setMonthlyData(monthly.map((x) => x.pt));
+      setMonthlyRanks(monthly.map(({ best, worst }) => ({ best, worst })));
       setQuarterlyData(quarterly);
-      setBlockSnap(sortByKpi(applyKpiToRows(curRows)));
+      setBlockSnap(rankedOnly(sortByKpi(applyKpiToRows(curRows))));
     } finally {
       setLoading(false);
     }
@@ -310,12 +313,7 @@ export default function AnalyticsClient() {
                     </thead>
                     <tbody>
                       {monthlyData.map((pt, idx) => {
-                        const vals = Object.entries(pt)
-                          .filter(([k]) => k !== "label")
-                          .map(([k, v]) => ({ name: k, kpi: Number(v) }))
-                          .sort((a, b) => a.kpi - b.kpi);
-                        const best = vals[0];
-                        const worst = vals[vals.length - 1];
+                        const { best, worst } = monthlyRanks[idx] ?? {};
                         return (
                           <tr key={idx}>
                             <td><strong>{pt.label}</strong></td>

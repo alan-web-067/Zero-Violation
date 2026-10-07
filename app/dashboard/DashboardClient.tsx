@@ -322,7 +322,7 @@ export default function DashboardClient() {
 
     if (winner) {
       bullets.push(
-        prevWinnerRow && prevWinnerRow.name === winner.name
+        prevRanked[0]?.name === winner.name
           ? `${winner.name} remains the top performer.`
           : `${winner.name} is the top performer this period.`
       );

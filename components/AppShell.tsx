@@ -44,7 +44,7 @@ const NAV: Array<{
       { href: "/workspace",   label: "My Workspace",   icon: Briefcase,  roles: ["block_manager", "super_admin", "admin"] },
       // HR/ACCOUNTING MEMBERS FEATURE — Members page for employee registry
       { href: "/members",     label: "Members",        icon: UserCheck,  roles: ["admin", "super_admin"] },
-      { href: "/admin",       label: "Admin / Edit",   icon: Settings2 },
+      { href: "/admin",       label: "Admin / Edit",   icon: Settings2,  roles: ["admin", "super_admin"] },
       { href: "/users",       label: "User Management",icon: Users,      roles: ["super_admin", "admin"] },
       // Company Lookup hidden from HR (no KPI relevance to their workflow)
       { href: "/lookup",      label: "Company Lookup", icon: Search,     roles: ["admin", "super_admin", "block_manager", "viewer"] },

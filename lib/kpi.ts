@@ -136,18 +136,18 @@ export function calcKpi(row: Row): KpiResult {
   const inspectionDelta = violPoint * inspectionPercent;
   const afterClean = violPoint - cleanDelta - inspectionDelta;
 
-  const { expectedTrucks, diffPercent, staffPercent } = getStaffDetails(
-    Number(row.teamMembers || 0),
-    Number(row.trucks || 0),
-  );
+  const noData = violPoint === 0 && totalIns === 0 && cleanIns === 0;
+
+  // Blocks with nothing entered get no workload adjustment (it would only be noise).
+  const { expectedTrucks, diffPercent, staffPercent } = noData
+    ? { expectedTrucks: 0, diffPercent: 0, staffPercent: 0 }
+    : getStaffDetails(Number(row.teamMembers || 0), Number(row.trucks || 0));
 
   const staffDelta = afterClean * staffPercent;
   const finalKpiRaw = afterClean + staffDelta;
   const finalKpi = round2(clamp(finalKpiRaw, 0, maxKpi));
 
-  // Nothing entered yet — don't let an empty block rank as "Perfect".
-  const noData = violPoint === 0 && totalIns === 0 && cleanIns === 0;
-
+  // Nothing entered yet (noData) — don't let an empty block rank as "Perfect".
   let status = "Poor";
 
   if (noData) status = "No data";
