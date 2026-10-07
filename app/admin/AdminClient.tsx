@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
+import AddBlockDialog from "@/components/AddBlockDialog";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
 import {
   Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, RowWithKpi,
@@ -39,6 +40,7 @@ export default function AdminClient() {
   const [loading,   setLoading]   = useState(true);
   const [saving,    setSaving]    = useState(false);
   const [toast,     setToast]     = useState("");
+  const [addOpen,   setAddOpen]   = useState(false);
 
   const activeRows  = draftRows ?? baseRows;
   const displayRows = editMode ? activeRows : sortByKpi(applyKpiToRows(activeRows));
@@ -195,7 +197,17 @@ export default function AdminClient() {
           <span style={{ fontSize: 18 }}>⚙️</span>
           <h1>Admin / Edit</h1>
         </div>
-        <div className="page-header-right">
+        <div className="page-header-right" style={{ gap: 8 }}>
+          {isAdmin && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setAddOpen(true)}
+              disabled={loading || saving || editMode}
+              title={editMode ? "Save or cancel your edits first" : undefined}
+            >
+              + Add Block
+            </button>
+          )}
           <span className="badge" style={{ background: "#dcfce7", color: "#065f46" }}>
             {role ? roleLabel(role) : "Admin"}
           </span>
@@ -293,8 +305,8 @@ export default function AdminClient() {
                         >
                           {!editMode && (
                             <td>
-                              <span className={`rank-num${idx === 0 ? " gold" : idx === 1 ? " silver" : idx === 2 ? " bronze" : ""}`}>
-                                {idx + 1}
+                              <span className={`rank-num${(r as RowWithKpi).kpi.noData ? "" : idx === 0 ? " gold" : idx === 1 ? " silver" : idx === 2 ? " bronze" : ""}`}>
+                                {(r as RowWithKpi).kpi.noData ? "—" : idx + 1}
                               </span>
                             </td>
                           )}
@@ -368,6 +380,15 @@ export default function AdminClient() {
           Use "Publish" to make data visible to all viewers. Quarter view combines 3 months automatically — edit individual months instead.
         </div>
       </div>
+
+      <AddBlockDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        onAdded={async (name) => {
+          setToast(`Block "${name}" added ✅`);
+          await loadData(period);
+        }}
+      />
 
       {toast && (
         <div className="toast-wrapper">
