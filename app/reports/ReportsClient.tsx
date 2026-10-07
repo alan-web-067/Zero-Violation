@@ -456,14 +456,14 @@ export default function ReportsClient() {
     const header = [
       "Rank","Block","Team Members","Trucks Checked","Clean Inspections",
       "Total Inspections","Violation Points","Staff Adj.","Staff %",
-      "Clean Adj.","After Clean","Final KPI","Status",
+      "Clean Adj.","Inspection Bonus","After Clean","Final KPI","Status",
     ];
     lines.push(header.join(","));
     sorted.forEach((r, idx) => {
       lines.push([
         idx + 1, r.name, r.teamMembers, r.trucks, r.cleanInspections,
         r.totalInspections, r.kpi.violPoint, r.kpi.staffDelta, fmtPct(r.kpi.staffPercent),
-        r.kpi.cleanDelta, r.kpi.afterClean, r.kpi.finalKpi, r.kpi.status,
+        r.kpi.cleanDelta, r.kpi.inspectionDelta, r.kpi.afterClean, r.kpi.finalKpi, r.kpi.status,
       ].join(","));
     });
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -577,7 +577,7 @@ export default function ReportsClient() {
                       <th className="num">Viol. Points</th>
                       <th className="num">Staff Adj.</th>
                       <th className="num">Staff %</th>
-                      <th className="num">Clean Adj.</th>
+                      <th className="num">Discounts</th>
                       <th className="num">After Clean</th>
                       <th className="num">Final KPI</th>
                       <th>Status</th>
@@ -617,7 +617,9 @@ export default function ReportsClient() {
                             </span>
                           </td>
                           <td className="num">
-                            {r.kpi.cleanDelta > 0 ? <span style={{ color: "#16a34a", fontWeight: 700 }}>−{r.kpi.cleanDelta.toFixed(2)}</span> : "—"}
+                            {(r.kpi.cleanDelta + r.kpi.inspectionDelta) > 0
+                            ? <span title={`Clean −${r.kpi.cleanDelta.toFixed(2)} · Inspections −${r.kpi.inspectionDelta.toFixed(2)}`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(r.kpi.cleanDelta + r.kpi.inspectionDelta).toFixed(2)}</span>
+                            : "—"}
                           </td>
                           <td className="num">{r.kpi.afterClean.toFixed(2)}</td>
                           <td className="num"><strong style={{ fontSize: 14 }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>

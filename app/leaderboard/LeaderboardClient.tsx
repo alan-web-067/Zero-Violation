@@ -152,7 +152,7 @@ export default function LeaderboardClient() {
                       <th className="num">KPI Adj. %</th>
                       <th className="num">Clean Ins.</th>
                       <th className="num">Total Ins.</th>
-                      <th className="num">Clean Adj.</th>
+                      <th className="num">Discounts</th>
                       <th className="num">Final KPI</th>
                       <th>Status</th>
                       <th></th>
@@ -203,10 +203,10 @@ export default function LeaderboardClient() {
                         {/* Clean inspections */}
                         <td className="num">{r.cleanInspections || "—"}</td>
                         <td className="num">{r.totalInspections || "—"}</td>
-                        {/* Clean discount (scales with clean-inspection rate) */}
+                        {/* Clean-rate + inspection-volume discounts (hover for breakdown) */}
                         <td className="num">
-                          {r.kpi.cleanDelta > 0
-                            ? <span style={{ color: "#16a34a", fontWeight: 700 }}>−{r.kpi.cleanDelta.toFixed(2)}</span>
+                          {(r.kpi.cleanDelta + r.kpi.inspectionDelta) > 0
+                            ? <span title={`Clean −${r.kpi.cleanDelta.toFixed(2)} · Inspections −${r.kpi.inspectionDelta.toFixed(2)}`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(r.kpi.cleanDelta + r.kpi.inspectionDelta).toFixed(2)}</span>
                             : "—"}
                         </td>
                         <td className="num"><strong style={{ fontSize: 14 }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>

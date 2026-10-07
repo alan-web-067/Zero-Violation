@@ -6,7 +6,7 @@ import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
 import {
-  Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, RowWithKpi,
+  Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, inspectionStats, RowWithKpi,
 } from "@/lib/kpi";
 import { loadPeriodRows } from "@/lib/useKpiData";
 import { isFullAdmin, roleLabel } from "@/lib/permissions";
@@ -43,6 +43,7 @@ export default function AdminClient() {
   const activeRows  = draftRows ?? baseRows;
   const displayRows = editMode ? activeRows : sortByKpi(applyKpiToRows(activeRows));
   const rankedCount = editMode ? 0 : rankedOnly(displayRows as RowWithKpi[]).length;
+  const editStats = inspectionStats(activeRows);
 
   // Total Inspections can never be lower than Clean Inspections (a clean
   // inspection is a subset of total inspections) — block saving until fixed.
@@ -275,7 +276,7 @@ export default function AdminClient() {
                       <th className="num">Viol. Points</th>
                       <th className="num">Staff Adj.</th>
                       <th className="num">Staff %</th>
-                      <th className="num">Clean Adj.</th>
+                      <th className="num">Discounts</th>
                       <th className="num">Final KPI</th>
                       <th>Status</th>
                     </tr>
@@ -283,7 +284,7 @@ export default function AdminClient() {
                   <tbody>
                     {(editMode ? activeRows : (displayRows as RowWithKpi[])).map((row, idx) => {
                       const r      = editMode ? row as Row : row as RowWithKpi;
-                      const kpi    = editMode ? calcKpi(r as Row) : (r as RowWithKpi).kpi;
+                      const kpi    = editMode ? calcKpi(r as Row, editStats) : (r as RowWithKpi).kpi;
                       const rowRaw = r as Row;
 
                       return (
@@ -342,9 +343,9 @@ export default function AdminClient() {
                             </span>
                           </td>
                           <td className="num">
-                            {kpi.cleanDelta > 0
-                              ? <span style={{ color: "#16a34a", fontWeight: 700 }}>−{kpi.cleanDelta.toFixed(2)}</span>
-                              : "—"}
+                            {(kpi.cleanDelta + kpi.inspectionDelta) > 0
+                            ? <span title={`Clean −${kpi.cleanDelta.toFixed(2)} · Inspections −${kpi.inspectionDelta.toFixed(2)}`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(kpi.cleanDelta + kpi.inspectionDelta).toFixed(2)}</span>
+                            : "—"}
                           </td>
                           <td className="num">
                             <strong style={{ fontSize: 14 }}>{kpi.finalKpi.toFixed(2)}</strong>

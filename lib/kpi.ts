@@ -18,7 +18,9 @@ export type KpiResult = {
   cleanRate: number;      // clean ÷ total inspections (0–1)
   cleanPercent: number;   // discount applied to violation points (0–0.30)
   cleanDelta: number;
-  afterClean: number;
+  inspectionPercent: number; // inspection-volume discount (0–0.10)
+  inspectionDelta: number;
+  afterClean: number;        // violation points after clean + inspection discounts
   expectedTrucks: number;
   diffPercent: number;
   staffPercent: number;
@@ -100,7 +102,27 @@ export function getStaffPercent(teamMembers: number, trucksChecked: number): num
 
 const MAX_CLEAN_DISCOUNT = 0.30;
 
-export function calcKpi(row: Row): KpiResult {
+// Blocks that did more inspections than the period's average get a small % off
+// their violation points, growing to the full amount for the block with the most.
+// At or below average: no discount (and no penalty).
+export const MAX_INSPECTION_DISCOUNT = 0.10;
+
+export type InspectionStats = { avg: number; max: number };
+
+export function inspectionStats(rows: Row[]): InspectionStats {
+  const counts = rows.map((r) => Number(r.totalInspections || 0)).filter((n) => n > 0);
+  if (counts.length === 0) return { avg: 0, max: 0 };
+  return { avg: counts.reduce((a, b) => a + b, 0) / counts.length, max: Math.max(...counts) };
+}
+
+function inspectionDiscount(totalIns: number, stats?: InspectionStats): number {
+  if (!stats || stats.max <= stats.avg || totalIns <= stats.avg) return 0;
+  return round2(MAX_INSPECTION_DISCOUNT * (totalIns - stats.avg) / (stats.max - stats.avg));
+}
+
+// `stats` = inspectionStats() of every block in the same period. Without it the
+// inspection discount is skipped — prefer applyKpiToRows(), which supplies it.
+export function calcKpi(row: Row, stats?: InspectionStats): KpiResult {
   const periodMonths = Number(row.periodMonths || 1);
 
   const maxKpi = periodMonths * 10;
@@ -116,7 +138,9 @@ export function calcKpi(row: Row): KpiResult {
   const cleanRate = totalIns > 0 ? clamp(cleanIns / totalIns, 0, 1) : 0;
   const cleanPercent = violPoint > 0 ? round2(MAX_CLEAN_DISCOUNT * cleanRate) : 0;
   const cleanDelta = violPoint * cleanPercent;
-  const afterClean = violPoint - cleanDelta;
+  const inspectionPercent = violPoint > 0 ? inspectionDiscount(totalIns, stats) : 0;
+  const inspectionDelta = violPoint * inspectionPercent;
+  const afterClean = violPoint - cleanDelta - inspectionDelta;
 
   const { expectedTrucks, diffPercent, staffPercent } = getStaffDetails(
     Number(row.teamMembers || 0),
@@ -142,6 +166,8 @@ export function calcKpi(row: Row): KpiResult {
     cleanRate: round2(cleanRate),
     cleanPercent,
     cleanDelta: round2(cleanDelta),
+    inspectionPercent,
+    inspectionDelta: round2(inspectionDelta),
     afterClean: round2(afterClean),
     expectedTrucks,
     diffPercent,
@@ -224,20 +250,22 @@ export function combineQuarterRows(lists: Row[][], defs: BlockDef[]): Row[] {
 }
 
 export function applyKpiToRows(rows: Row[]): RowWithKpi[] {
-  return rows.map((r) => ({ ...r, kpi: calcKpi(r) }));
+  const stats = inspectionStats(rows);
+  return rows.map((r) => ({ ...r, kpi: calcKpi(r, stats) }));
 }
 
 function trucksPerMember(r: Row): number {
   return r.teamMembers > 0 ? Number(r.trucks || 0) / r.teamMembers : 0;
 }
 
-// Best first: lowest Final KPI. Ties → higher clean rate → more trucks per member.
+// Best first: lowest Final KPI. Ties → higher clean rate → more inspections → more trucks per member.
 // Blocks with no data always sort last.
 export function sortByKpi(rows: RowWithKpi[]): RowWithKpi[] {
   return [...rows].sort((a, b) =>
     Number(a.kpi.noData) - Number(b.kpi.noData) ||
     a.kpi.finalKpi - b.kpi.finalKpi ||
     b.kpi.cleanRate - a.kpi.cleanRate ||
+    Number(b.totalInspections || 0) - Number(a.totalInspections || 0) ||
     trucksPerMember(b) - trucksPerMember(a) ||
     a.name.localeCompare(b.name)
   );
@@ -251,7 +279,8 @@ export function rankedOnly(rows: RowWithKpi[]): RowWithKpi[] {
 // Short human-readable reasons a block is ranked where it is.
 export function kpiReasons(r: RowWithKpi): string[] {
   const out = [`${r.kpi.violPoint} violation point${r.kpi.violPoint === 1 ? "" : "s"}`];
-  if (r.totalInspections > 0) out.push(`${Math.round(r.kpi.cleanRate * 100)}% clean inspections`);
+  if (r.totalInspections > 0) out.push(`${r.totalInspections} inspections, ${Math.round(r.kpi.cleanRate * 100)}% clean`);
+  if (r.kpi.inspectionPercent > 0) out.push(`−${Math.round(r.kpi.inspectionPercent * 100)}% inspection bonus`);
   if (r.teamMembers > 0 && r.trucks > 0) {
     out.push(`${Math.round(trucksPerMember(r))} trucks/member (target ${TRUCKS_PER_MEMBER})`);
   }

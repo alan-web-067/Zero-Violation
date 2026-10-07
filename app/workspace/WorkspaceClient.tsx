@@ -18,7 +18,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
-import { Row, RowWithKpi, calcKpi, MONTHS, fmtPct } from "@/lib/kpi";
+import { Row, RowWithKpi, calcKpi, applyKpiToRows, inspectionStats, MONTHS, fmtPct } from "@/lib/kpi";
 import { loadPeriodRows, fetchBlockDefs } from "@/lib/useKpiData";
 import { roleLabel } from "@/lib/permissions";
 
@@ -97,6 +97,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
   const [period, setPeriod] = useState<PeriodState>(periodNow());
   const [loading, setLoading] = useState(true);
   const [current, setCurrent] = useState<Row | null>(null);
+  const [periodRows, setPeriodRows] = useState<Row[]>([]);
   const [draftValues, setDraftValues] = useState<Record<DraftField, number>>({
     teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 0,
   });
@@ -118,6 +119,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
     try {
       const rows = await loadPeriodRows(p, false);
       const row = rows.find((r) => String(r.id) === block.id) || null;
+      setPeriodRows(rows);
       setCurrent(row);
       if (row) {
         setDraftValues({
@@ -165,8 +167,11 @@ function BlockManagerPanel({ me }: { me: Me }) {
   }
 
   const projectedRow: Row | null = current ? { ...current, ...draftValues } : null;
-  const currentKpi = current ? calcKpi(current) : null;
-  const projectedKpi = projectedRow ? calcKpi(projectedRow) : null;
+  // The inspection discount compares against every block in the period.
+  const currentKpi = current ? calcKpi(current, inspectionStats(periodRows)) : null;
+  const projectedKpi = projectedRow
+    ? calcKpi(projectedRow, inspectionStats(periodRows.map((r) => (r.id === projectedRow.id ? projectedRow : r))))
+    : null;
 
   const changedFields = useMemo(() => {
     if (!current) return [] as DraftField[];
@@ -330,6 +335,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
                       <tbody>
                         <tr><td>Staff adjustment</td><td className="num">{fmtPct(currentKpi.staffPercent)}</td><td className="num">{fmtPct(projectedKpi.staffPercent)}</td></tr>
                         <tr><td>Clean discount applied</td><td className="num">{currentKpi.cleanDelta > 0 ? `−${currentKpi.cleanDelta.toFixed(2)}` : "—"}</td><td className="num">{projectedKpi.cleanDelta > 0 ? `−${projectedKpi.cleanDelta.toFixed(2)}` : "—"}</td></tr>
+                        <tr><td>Inspection bonus</td><td className="num">{currentKpi.inspectionDelta > 0 ? `−${currentKpi.inspectionDelta.toFixed(2)}` : "—"}</td><td className="num">{projectedKpi.inspectionDelta > 0 ? `−${projectedKpi.inspectionDelta.toFixed(2)}` : "—"}</td></tr>
                         <tr><td>Final KPI</td><td className="num"><strong>{currentKpi.finalKpi.toFixed(2)}</strong></td><td className="num"><strong>{projectedKpi.finalKpi.toFixed(2)}</strong></td></tr>
                       </tbody>
                     </table>
@@ -371,7 +377,7 @@ function FieldEditorPanel({ field, label, icon }: { field: DraftField; label: st
     setLoading(true);
     try {
       const raw = await loadPeriodRows(p, false);
-      const withKpi = raw.map((r) => ({ ...r, kpi: calcKpi(r) }));
+      const withKpi = applyKpiToRows(raw);
       setRows(withKpi);
 
       const mine = await apiClient("/api/drafts?scope=mine");
@@ -602,7 +608,7 @@ function ApprovalQueuePanel() {
       for (const key of periods) {
         const [y, m] = key.split("-").map(Number);
         const raw = await loadPeriodRows({ year: y, quarter: Math.floor((m - 1) / 3) + 1, month: m, view: "month" }, false);
-        map[key] = raw.map((r) => ({ ...r, kpi: calcKpi(r) }));
+        map[key] = applyKpiToRows(raw);
       }
       setCurrentByPeriod(map);
     } finally {
