@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DraftBadge from "@/components/DraftBadge";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
@@ -172,7 +173,7 @@ export default function LeaderboardClient() {
                             {r.kpi.noData ? "—" : idx + 1}
                           </span>
                         </td>
-                        <td><strong>{r.name}</strong></td>
+                        <td><Link href={`/blocks/${encodeURIComponent(r.id)}`} className="block-link" title="Open block profile"><strong>{r.name}</strong></Link></td>
                         {/* Team */}
                         <td className="num">{r.teamMembers || "—"}</td>
                         {/* Trucks checked */}
