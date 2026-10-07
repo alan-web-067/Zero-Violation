@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { Pencil, X } from "lucide-react";
+import * as Dialog from "@radix-ui/react-dialog";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import AddBlockDialog from "@/components/AddBlockDialog";
@@ -14,6 +15,30 @@ import {
 import { loadPeriodRows } from "@/lib/useKpiData";
 import { isFullAdmin, roleLabel } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
+
+const FIELD_LABELS: Array<[keyof Row, string]> = [
+  ["teamMembers", "Team Members"],
+  ["trucks", "Trucks Checked"],
+  ["cleanInspections", "Clean Ins."],
+  ["totalInspections", "Total Ins."],
+  ["violationPoints", "Viol. Points"],
+];
+
+// Human-readable list of what Publish would change compared with the live data.
+function describeChanges(next: Row[], published: Row[] | null): string[] {
+  const byId = new Map((published ?? []).map((r) => [String(r.id), r]));
+  const out: string[] = [];
+  for (const r of next) {
+    const before = byId.get(String(r.id));
+    const diffs = FIELD_LABELS
+      .filter(([f]) => Number(before?.[f] ?? 0) !== Number(r[f] ?? 0))
+      .map(([f, label]) => `${label} ${Number(before?.[f] ?? 0)} → ${Number(r[f] ?? 0)}`);
+    if (diffs.length) out.push(`${r.name}: ${diffs.join(", ")}`);
+  }
+  return out;
+}
+
+type HistoryEntry = { id: number; at: string; by: string; kind: string; canRestore: boolean };
 
 const BADGE_CLASS: Record<string, string> = {
   Perfect:   "badge badge-perfect",
@@ -44,6 +69,8 @@ export default function AdminClient() {
   const [toast,     setToast]     = useState("");
   const [addOpen,   setAddOpen]   = useState(false);
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
+  const [confirmChanges, setConfirmChanges] = useState<string[] | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   const activeRows  = draftRows ?? baseRows;
   const displayRows = editMode ? activeRows : sortByKpi(applyKpiToRows(activeRows));
@@ -92,8 +119,19 @@ export default function AdminClient() {
     }
   }
 
+  async function loadHistory(p: PeriodState) {
+    if (p.view !== "month") { setHistory([]); return; }
+    try {
+      const out = await apiClient(`/api/results/month/history?year=${p.year}&month=${p.month}`);
+      setHistory(out.history || []);
+    } catch {
+      setHistory([]);
+    }
+  }
+
   async function loadData(p: PeriodState, admin = isAdmin) {
     setLoading(true);
+    if (admin) loadHistory(p);
     try {
       const rows = await loadPeriodRows(p, admin);
       setBaseRows(rows);
@@ -149,8 +187,35 @@ export default function AdminClient() {
     }
   }
 
+  // Step 1 of Publish: show exactly what will change for viewers before doing it.
+  async function openPublishConfirm() {
+    if (hasRowErrors) { setToast("Fix invalid numbers before publishing ❌"); return; }
+    try {
+      const out = await apiClient(`/api/results/month?scope=published&year=${period.year}&month=${period.month}`);
+      setConfirmChanges(describeChanges(draftRows ?? baseRows, (out.data as Row[] | null) ?? null));
+    } catch {
+      setConfirmChanges([]);
+    }
+  }
+
+  async function restoreVersion(entry: HistoryEntry) {
+    const when = new Date(entry.at).toLocaleString();
+    if (!window.confirm(`Restore the version published ${when} by ${entry.by}? It will be visible to everyone right away.`)) return;
+    setSaving(true);
+    try {
+      await apiClient("/api/results/month/restore", { method: "POST", body: JSON.stringify({ id: entry.id }) });
+      setToast("Restored ✅");
+      await loadData(period);
+    } catch (err) {
+      setToast(`Restore failed ❌ ${err instanceof Error ? err.message : ""}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function publish() {
     if (hasRowErrors) { setToast("Fix invalid numbers before publishing ❌"); return; }
+    setConfirmChanges(null);
     setSaving(true);
     try {
       const y = Number(period.year), m = Number(period.month);
@@ -166,6 +231,7 @@ export default function AdminClient() {
       setDraftRows(null);
       setEditMode(false);
       setToast("Published ✅ Viewers can now see this data");
+      loadHistory(period);
     } catch (err) {
       setToast(`Publish failed ❌ ${err instanceof Error ? err.message : ""}`);
     } finally {
@@ -240,7 +306,7 @@ export default function AdminClient() {
                   <button className="btn btn-secondary btn-sm" onClick={saveDraft} disabled={saving || hasRowErrors}>
                     {saving ? "Saving…" : "Save Draft"}
                   </button>
-                  <button className="btn btn-primary btn-sm" onClick={publish} disabled={saving || hasRowErrors}>
+                  <button className="btn btn-primary btn-sm" onClick={openPublishConfirm} disabled={saving || hasRowErrors}>
                     {saving ? "Publishing…" : "Publish"}
                   </button>
                 </div>
@@ -394,12 +460,81 @@ export default function AdminClient() {
           </div>
         </div>
 
+        {isAdmin && period.view === "month" && history.length > 0 && (
+          <div className="card" style={{ marginTop: 14 }}>
+            <div className="card-header">
+              <h2 className="card-title">Publish history</h2>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Restore puts an earlier version back live</span>
+            </div>
+            <div className="card-body no-pad">
+              <table className="data-table">
+                <tbody>
+                  {history.map((h, i) => (
+                    <tr key={h.id}>
+                      <td style={{ whiteSpace: "nowrap" }}>{new Date(h.at).toLocaleString()}</td>
+                      <td>
+                        {h.kind === "approve" ? "Approved a Block Manager change" : h.kind === "restore" ? "Restored an earlier version" : "Published"}
+                        {" "}by <strong>{h.by}</strong>
+                        {i === 0 && <span className="badge badge-perfect" style={{ marginLeft: 8 }}>Live</span>}
+                      </td>
+                      <td className="num">
+                        {i > 0 && h.canRestore && (
+                          <button className="btn btn-secondary btn-sm" onClick={() => restoreVersion(h)} disabled={saving || editMode}>
+                            Restore
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         <div style={{ marginTop: 14, padding: "12px 16px", background: "var(--gray-50)", border: "1px solid var(--border)", borderRadius: "var(--radius)", fontSize: 12, color: "var(--text-muted)", lineHeight: 1.6 }}>
           <strong style={{ color: "var(--text)" }}>Admin Notes:</strong>{" "}
           Edit mode shows live KPI previews as you type. Use "Save Draft" to store without making visible to viewers.
           Use "Publish" to make data visible to all viewers. Quarter view combines 3 months automatically — edit individual months instead.
         </div>
       </div>
+
+      {/* Publish confirmation — lists every change viewers will see */}
+      <Dialog.Root open={confirmChanges !== null} onOpenChange={(o) => { if (!o) setConfirmChanges(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="dialog-overlay" />
+          <Dialog.Content className="add-block-panel" aria-describedby={undefined}>
+            <div className="add-block-header">
+              <Dialog.Title className="alox-title">
+                Publish {["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][period.month - 1]} {period.year}?
+              </Dialog.Title>
+              <Dialog.Close asChild>
+                <button type="button" className="btn btn-ghost btn-icon" aria-label="Close"><X size={15} /></button>
+              </Dialog.Close>
+            </div>
+            <div className="add-block-body">
+              {confirmChanges && confirmChanges.length > 0 ? (
+                <>
+                  <p style={{ marginTop: 0, fontSize: 13 }}>Everyone will see these changes:</p>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.7, maxHeight: 280, overflowY: "auto" }}>
+                    {confirmChanges.map((c) => <li key={c}>{c}</li>)}
+                  </ul>
+                </>
+              ) : (
+                <p style={{ margin: 0, fontSize: 13 }}>No changes compared with what is already published.</p>
+              )}
+            </div>
+            <div className="add-block-footer">
+              <Dialog.Close asChild>
+                <button type="button" className="btn btn-secondary btn-sm">Cancel</button>
+              </Dialog.Close>
+              <button type="button" className="btn btn-primary btn-sm" onClick={publish} disabled={saving}>
+                {saving ? "Publishing…" : "Publish"}
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <RenameBlockDialog
         target={renameTarget}

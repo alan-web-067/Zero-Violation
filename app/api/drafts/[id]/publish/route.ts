@@ -16,7 +16,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { initDb, get, withTransaction } from "@/lib/db";
+import { initDb, get, withTransaction, logPublish } from "@/lib/db";
 import { requireAuth, isFullAdmin, nowIso } from "@/lib/auth";
 import { canSelfPublish, DraftField } from "@/lib/permissions";
 import { Row } from "@/lib/kpi";
@@ -119,6 +119,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         `UPDATE field_drafts SET status = 'published', updated_at = ?, published_at = ? WHERE id = ?`,
         [published_at, published_at, id]
       );
+      await logPublish(tx, { year: draft.year, month: draft.month, userId: user.uid, username: user.username, kind: "approve", at: published_at });
       return false;
     });
     if (alreadyPublished) {

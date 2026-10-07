@@ -42,7 +42,7 @@ async function all<T = unknown>(sql: string, params: unknown[] = []) {
 // Every serverless cold start used to replay ~25 sequential migration queries
 // against remote Turso before answering. Now a single version check gates them.
 // BUMP THIS whenever you add/alter a table or seed below, so it runs once more.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 let _initPromise: Promise<void> | null = null;
 
@@ -240,6 +240,13 @@ async function migrate() {
     )
   `);
 
+  // Publish history: who published what, plus a snapshot so it can be restored.
+  try { await run(`ALTER TABLE publish_log ADD COLUMN user_id INTEGER`); } catch { /* exists */ }
+  try { await run(`ALTER TABLE publish_log ADD COLUMN username TEXT`); } catch { /* exists */ }
+  try { await run(`ALTER TABLE publish_log ADD COLUMN kind TEXT`); } catch { /* exists */ }
+  try { await run(`ALTER TABLE publish_log ADD COLUMN data_json TEXT`); } catch { /* exists */ }
+  await run(`CREATE INDEX IF NOT EXISTS idx_publish_log_period ON publish_log(year, month, id)`);
+
   await run(`
     CREATE TABLE IF NOT EXISTS blocks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -388,4 +395,19 @@ async function withTransaction<T>(fn: (tx: TxHelpers) => Promise<T>): Promise<T>
   }
 }
 
-export { run, get, all, withTransaction };
+// Records a publish-type event with a snapshot of the published month (for history/restore).
+async function logPublish(
+  tx: TxHelpers,
+  e: { year: number; month: number; userId: number; username: string; kind: "publish" | "approve" | "restore"; at: string }
+) {
+  const cur = await tx.get<{ data_json: string }>(
+    `SELECT data_json FROM month_results WHERE scope='published' AND year=? AND month=?`,
+    [e.year, e.month]
+  );
+  await tx.run(
+    `INSERT INTO publish_log(year, month, published_at, user_id, username, kind, data_json) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+    [e.year, e.month, e.at, e.userId, e.username, e.kind, cur?.data_json ?? null]
+  );
+}
+
+export { run, get, all, withTransaction, logPublish };
