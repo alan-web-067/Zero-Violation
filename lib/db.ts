@@ -11,7 +11,6 @@ import bcrypt from "bcryptjs";
 // Local dev: falls back to file:data.sqlite (same behaviour as before).
 const globalForDb = globalThis as typeof globalThis & {
   _zvClient?: ReturnType<typeof createClient>;
-  _zvInited?: boolean;
 };
 
 if (!globalForDb._zvClient) {
@@ -39,19 +38,43 @@ async function all<T = unknown>(sql: string, params: unknown[] = []) {
   return rs.rows as unknown as T[];
 }
 
-// ── Migration flags ───────────────────────────────────────────────────────────
-// Module-level flag — resets whenever db.ts is hot-reloaded by Next.js,
-// unlike _zvInited which lives on globalThis and persists across hot-reloads.
-// This ensures feature tables (events, members, payroll, reports) are always
-// created/verified after a code change, even without a full server restart.
-let _featureTablesMigrated = false;
+// ── Schema version ────────────────────────────────────────────────────────────
+// Every serverless cold start used to replay ~25 sequential migration queries
+// against remote Turso before answering. Now a single version check gates them.
+// BUMP THIS whenever you add/alter a table or seed below, so it runs once more.
+const SCHEMA_VERSION = 1;
 
-export async function initDb() {
-  // Feature tables: run once per module load (i.e. also after hot-reloads).
-  // CREATE TABLE IF NOT EXISTS is idempotent — safe to repeat.
-  if (!_featureTablesMigrated) {
-    _featureTablesMigrated = true;
+let _initPromise: Promise<void> | null = null;
 
+export function initDb(): Promise<void> {
+  // Shared promise: concurrent requests on a cold instance wait on one init.
+  if (!_initPromise) {
+    _initPromise = ensureSchema().catch((e) => {
+      _initPromise = null; // retry on the next request
+      throw e;
+    });
+  }
+  return _initPromise;
+}
+
+async function ensureSchema() {
+  try {
+    const row = await get<{ version: number }>(`SELECT version FROM schema_meta WHERE id = 1`);
+    if ((row?.version ?? 0) >= SCHEMA_VERSION) return;
+  } catch { /* schema_meta doesn't exist yet */ }
+
+  await migrate();
+
+  await run(`CREATE TABLE IF NOT EXISTS schema_meta (id INTEGER PRIMARY KEY CHECK(id = 1), version INTEGER NOT NULL)`);
+  await run(
+    `INSERT INTO schema_meta(id, version) VALUES(1, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version`,
+    [SCHEMA_VERSION]
+  );
+}
+
+// Idempotent — every statement is safe to repeat.
+async function migrate() {
+  { // Feature tables (events, members, payroll, reports, truck income)
     await run(`
       CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,10 +161,6 @@ export async function initDb() {
       )
     `);
   }
-
-  // Guard: only run the full initialization (seeding, migrations) once per process lifetime.
-  if (globalForDb._zvInited) return;
-  globalForDb._zvInited = true;
 
   await run(`
     CREATE TABLE IF NOT EXISTS users (

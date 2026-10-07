@@ -48,15 +48,21 @@ export async function fetchBlockDefs(): Promise<BlockDef[]> {
   }
 }
 
-async function fetchMonth(scope: string, y: number, m: number): Promise<Row[] | null> {
-  try {
-    const out = await apiClient(
-      `/api/results/month?scope=${encodeURIComponent(scope)}&year=${y}&month=${m}`
-    );
-    return out.data as Row[] | null;
-  } catch {
-    return null;
-  }
+// Shares identical requests that are already in flight (e.g. Analytics loads each
+// month for both the monthly and quarterly charts at once). Nothing is kept after
+// the request settles, so saved/published data is never served stale.
+const inFlightMonths = new Map<string, Promise<Row[] | null>>();
+
+function fetchMonth(scope: string, y: number, m: number): Promise<Row[] | null> {
+  const url = `/api/results/month?scope=${encodeURIComponent(scope)}&year=${y}&month=${m}`;
+  const pending = inFlightMonths.get(url);
+  if (pending) return pending;
+  const p = apiClient(url)
+    .then((out) => out.data as Row[] | null)
+    .catch(() => null)
+    .finally(() => inFlightMonths.delete(url));
+  inFlightMonths.set(url, p);
+  return p;
 }
 
 async function loadMonthForRole(y: number, m: number, isAdmin: boolean, defs: BlockDef[]): Promise<Row[]> {
