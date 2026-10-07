@@ -24,6 +24,46 @@ const BADGE_CLASS: Record<string, string> = {
   "No data": "badge badge-nodata",
 };
 
+// Examples for the rule tables — values come from calcKpi(), so they always match the real scoring.
+const EXAMPLE_BASE: Row = { id: "ex", name: "ex", teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 10 };
+const CLEAN_EXAMPLES: Array<[number, number]> = [[100, 100], [90, 100], [50, 100], [0, 100]];
+const INSPECTION_EXAMPLES = [40, 50, 100, 200, 300, 500];
+const WORKLOAD_EXAMPLES = [400, 300, 200, 150, 100];
+
+function pct(p: number) {
+  const v = Math.round(p * 100);
+  return v === 0 ? "0%" : `−${v}%`;
+}
+
+function RuleTable({ n, title, note, head, rows }: {
+  n: number;
+  title: string;
+  note?: string;
+  head: string[];
+  rows: React.ReactNode[][];
+}) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ fontWeight: 800, marginBottom: 2 }}>{n}. {title}</div>
+      {note && <div style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 6 }}>{note}</div>}
+      <div className="table-wrap" style={{ border: "1px solid var(--border)", borderRadius: 10 }}>
+        <table className="data-table">
+          <thead>
+            <tr>{head.map((h, i) => <th key={i} className={i === 0 ? undefined : "num"}>{h}</th>)}</tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i}>
+                {r.map((c, j) => <td key={j} className={j === 0 ? undefined : "num"}><span style={{ fontWeight: j === r.length - 1 ? 700 : 500 }}>{c}</span></td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function ScoringClient() {
   const [row, setRow] = useState<Row>({
     id: "calc", name: "Example",
@@ -51,15 +91,59 @@ export default function ScoringClient() {
           <div className="card">
             <div className="card-header"><h2 className="card-title">The rules</h2></div>
             <div className="card-body" style={{ fontSize: 13, lineHeight: 1.7 }}>
-              <p style={{ marginTop: 0 }}><strong>Lower Final KPI = better.</strong> Each month starts from the block&apos;s violation points:</p>
-              <ol style={{ paddingLeft: 20, margin: 0, listStyle: "decimal" }}>
-                <li><strong>Clean discount</strong> — up to 30% off, based on clean ÷ total inspections (100% clean = −30%, 50% clean = −15%).</li>
-                <li><strong>Inspection discount</strong> — from {MIN_INSPECTIONS_FOR_DISCOUNT} inspections, 1% off for every 10 (100 = −10%, 300 = −30%). No discount below {MIN_INSPECTIONS_FOR_DISCOUNT}.</li>
-                <li><strong>Workload</strong> — target is {TRUCKS_PER_MEMBER} trucks per team member. Points are multiplied by expected ÷ actual trucks, between ×0.5 and ×2. Checking twice the target halves the points; half the target doubles them.</li>
-                <li><strong>Status</strong> — Perfect ≤ 2, Excellent ≤ 6, Good ≤ 8.9, otherwise Poor. Quarters use 3 months combined, so the limits are ×3.</li>
-              </ol>
+              <p style={{ marginTop: 0 }}>
+                <strong>Lower Final KPI = better.</strong> Each month starts from the block&apos;s violation points,
+                then two discounts and a workload adjustment are applied.
+              </p>
+
+              <RuleTable
+                n={1}
+                title="Clean discount — up to 30%, based on what share of inspections were clean"
+                note="The full 30% only when every inspection is clean."
+                head={["Clean / Total", "Clean rate", "Clean discount"]}
+                rows={CLEAN_EXAMPLES.map(([c, t]) => {
+                  const k = calcKpi({ ...EXAMPLE_BASE, cleanInspections: c, totalInspections: t });
+                  return [`${c} / ${t}`, `${Math.round((c / t) * 100)}%`, pct(k.cleanPercent)];
+                })}
+              />
+
+              <RuleTable
+                n={2}
+                title={`Inspection discount — from ${MIN_INSPECTIONS_FOR_DISCOUNT} inspections, 1% for every 10`}
+                note="No upper limit. Quarters use the monthly average."
+                head={["Total inspections", ...INSPECTION_EXAMPLES.map((n) => (n < MIN_INSPECTIONS_FOR_DISCOUNT ? `Under ${MIN_INSPECTIONS_FOR_DISCOUNT}` : String(n)))]}
+                rows={[["Discount", ...INSPECTION_EXAMPLES.map((n) =>
+                  pct(calcKpi({ ...EXAMPLE_BASE, totalInspections: n }).inspectionPercent))]]}
+              />
+
+              <RuleTable
+                n={3}
+                title={`Workload — target is ${TRUCKS_PER_MEMBER} trucks per team member`}
+                note={`Example: 5 members → ${5 * TRUCKS_PER_MEMBER} expected trucks. Points are multiplied by expected ÷ actual (between ×0.5 and ×2).`}
+                head={["Trucks checked", "vs. target", "Points ×"]}
+                rows={WORKLOAD_EXAMPLES.map((t) => {
+                  const k = calcKpi({ ...EXAMPLE_BASE, teamMembers: 5, trucks: t });
+                  return [String(t), `${Math.round((t / (5 * TRUCKS_PER_MEMBER)) * 100)}%`, `×${(1 + k.staffPercent).toFixed(2)}`];
+                })}
+              />
+
+              <RuleTable
+                n={4}
+                title="Status"
+                note="Quarters combine 3 months, so the limits are ×3."
+                head={["Final KPI (month)", "Status"]}
+                rows={[
+                  ["0 – 2", <span key="p" className={BADGE_CLASS.Perfect}>Perfect</span>],
+                  ["2 – 6", <span key="e" className={BADGE_CLASS.Excellent}>Excellent</span>],
+                  ["6 – 8.9", <span key="g" className={BADGE_CLASS.Good}>Good</span>],
+                  ["above 8.9", <span key="b" className={BADGE_CLASS.Poor}>Poor</span>],
+                  ["nothing entered", <span key="n" className={BADGE_CLASS["No data"]}>No data</span>],
+                ]}
+              />
+
               <p style={{ marginBottom: 0 }}>
-                Blocks with nothing entered show <span className="badge badge-nodata">No data</span> and are not ranked.
+                <strong>Example:</strong> 10 violation points, 200 inspections, 180 clean → 90% clean (−27%) + 200 inspections (−20%)
+                = −47% → <strong>5.3 points</strong>, then the workload adjustment gives the Final KPI.
                 When two blocks tie, the higher clean rate wins, then more inspections, then more trucks per member.
               </p>
             </div>
