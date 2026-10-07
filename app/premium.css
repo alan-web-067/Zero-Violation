@@ -531,3 +531,23 @@ a.block-link:hover { color: var(--emerald-600, #047857); border-bottom-color: cu
 [data-theme="dark"] .hp-section { background: #111d18; border-color: rgba(255, 255, 255, .1); }
 [data-theme="dark"] .hp-section p, [data-theme="dark"] .hp-section li, [data-theme="dark"] .hp-intro { color: #d1d5db; }
 [data-theme="dark"] .hp-section h4 { color: #f3f4f6; }
+
+/* ---------- Login: Alox speech bubble ---------- */
+.ll-root .ll-bubble { position: relative; display: flex; align-items: center; gap: 10px; text-align: left; max-width: 300px; min-height: 44px;
+  padding: 9px 16px 9px 9px; border-radius: 16px; border: 1px solid rgba(212, 167, 60, .55); background: #ffffff; color: #064e3b;
+  font-size: 13.5px; font-weight: 700; line-height: 1.4; letter-spacing: .1px;
+  box-shadow: 0 12px 28px -14px rgba(0, 0, 0, .55), 0 0 0 4px rgba(255, 255, 255, .06); }
+.ll-root .ll-bubble::after { content: ""; position: absolute; left: 50%; bottom: -7px; width: 12px; height: 12px; transform: translateX(-50%) rotate(45deg);
+  background: inherit; border-right: 1px solid rgba(212, 167, 60, .55); border-bottom: 1px solid rgba(212, 167, 60, .55); }
+.ll-root .ll-bubble-icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; line-height: 1;
+  background: #ecfdf5; box-shadow: inset 0 0 0 1px rgba(16, 185, 129, .25); }
+.ll-root .ll-bubble-text { text-wrap: balance; }
+.ll-root .ll-bubble.is-hit { background: #fffafa; color: #9f1239; border-color: rgba(244, 63, 94, .45);
+  box-shadow: 0 12px 28px -14px rgba(0, 0, 0, .55), 0 0 0 4px rgba(244, 63, 94, .12); }
+.ll-root .ll-bubble.is-hit::after { border-color: rgba(244, 63, 94, .45); }
+.ll-root .ll-bubble.is-hit .ll-bubble-icon { background: #ffe4e6; box-shadow: inset 0 0 0 1px rgba(244, 63, 94, .3); }
+
+.ll-root .ll-sound-btn { position: absolute; right: -6%; bottom: -6%; z-index: 3; width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; font-size: 15px; line-height: 1; background: #fff; border: 1px solid rgba(212, 167, 60, .55);
+  box-shadow: 0 6px 14px -6px rgba(0, 0, 0, .45); transition: transform .15s; }
+.ll-root .ll-sound-btn:hover { transform: scale(1.08); }

@@ -1,5 +1,6 @@
 "use client";
 
+import { playRobotHit, robotSoundEnabled, setRobotSoundEnabled } from "@/lib/robotSound";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -55,6 +56,7 @@ export default function LoginPage() {
   const [robotImg, setRobotImg] = useState(ROBOT_TIPS[0].img);
   const [robotMode, setRobotMode] = useState<"normal" | "hit">("normal");
   const [hitCount, setHitCount] = useState(0);
+  const [soundOn, setSoundOn] = useState(() => (typeof window === "undefined" ? true : robotSoundEnabled()));
 
   const normalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hitTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -96,6 +98,7 @@ export default function LoginPage() {
   }, []);
 
   function handleRobotHit() {
+    playRobotHit(hitCount);
     stopNormalRotation();
     if (hitTimerRef.current) { clearTimeout(hitTimerRef.current); hitTimerRef.current = null; }
     const hit = HIT_MESSAGES[hitCount % HIT_MESSAGES.length];
@@ -1021,7 +1024,16 @@ export default function LoginPage() {
                 key={robotMsg}
                 className={`ll-bubble${robotMode === "hit" ? " is-hit" : ""}`}
               >
-                {robotMsg}
+                {(() => {
+                  // Messages start with an emoji: show it in its own badge, then the text.
+                  const [icon, ...words] = robotMsg.split(" ");
+                  return (
+                    <>
+                      <span className="ll-bubble-icon" aria-hidden>{icon}</span>
+                      <span className="ll-bubble-text">{words.join(" ")}</span>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Glow wrap: rings + robot + shadow */}
@@ -1051,6 +1063,17 @@ export default function LoginPage() {
 
                 {/* Cast shadow — shrinks when robot floats up */}
                 <div className="ll-platform-shadow" />
+
+                <button
+                  type="button"
+                  className="ll-sound-btn"
+                  onClick={() => { const next = !soundOn; setSoundOn(next); setRobotSoundEnabled(next); }}
+                  title={soundOn ? "Mute Alox" : "Unmute Alox"}
+                  aria-label={soundOn ? "Mute Alox" : "Unmute Alox"}
+                  aria-pressed={!soundOn}
+                >
+                  {soundOn ? "🔊" : "🔇"}
+                </button>
               </div>
 
               <div className="ll-alox-name">ALOX</div>
