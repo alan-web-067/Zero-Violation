@@ -2,6 +2,7 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
+import { passwordProblem } from "@/lib/permissions";
 import bcrypt from "bcryptjs";
 import { get, run } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
@@ -23,9 +24,8 @@ export async function POST(req: NextRequest) {
     if (!currentPassword || !newPassword) {
       return NextResponse.json({ error: "Current and new password are required" }, { status: 400 });
     }
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: "New password must be at least 8 characters" }, { status: 400 });
-    }
+    const pwProblem = passwordProblem(newPassword);
+    if (pwProblem) return NextResponse.json({ error: pwProblem }, { status: 400 });
     if (newPassword === currentPassword) {
       return NextResponse.json({ error: "New password must be different from the current password" }, { status: 400 });
     }

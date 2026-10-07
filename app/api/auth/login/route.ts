@@ -6,6 +6,11 @@ import bcrypt from "bcryptjs";
 import { initDb, get, run } from "@/lib/db";
 import { signToken, nowIso, Role, DISABLED_ROLES } from "@/lib/auth";
 
+// After this many wrong passwords in a row the account is locked for a while.
+// A superadmin can unlock it sooner by resetting the password or re-activating it.
+const MAX_FAILED_LOGINS = 5;
+const LOCK_MINUTES = 15;
+
 export async function POST(req: Request) {
   try {
     await initDb();
@@ -35,7 +40,9 @@ export async function POST(req: Request) {
       password_hash: string;
       role: Role;
       status: string | null;
-    }>(`SELECT id, username, password_hash, role, status FROM users WHERE username = ?`, [
+      failed_logins: number | null;
+      locked_until: string | null;
+    }>(`SELECT id, username, password_hash, role, status, failed_logins, locked_until FROM users WHERE username = ?`, [
       username.trim(),
     ]);
 
@@ -46,10 +53,30 @@ export async function POST(req: Request) {
       );
     }
 
+    const lockedMs = user.locked_until ? Date.parse(user.locked_until) - Date.now() : 0;
+    if (lockedMs > 0) {
+      const minutes = Math.ceil(lockedMs / 60_000);
+      return NextResponse.json(
+        { error: `Too many wrong passwords. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}, or ask an administrator to reset your password.` },
+        { status: 429 }
+      );
+    }
+
     const passwordMatch = bcrypt.compareSync(password.trim(), user.password_hash);
     if (!passwordMatch) {
+      const failed = (user.locked_until ? 0 : Number(user.failed_logins || 0)) + 1;
+      if (failed >= MAX_FAILED_LOGINS) {
+        const until = new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString();
+        await run(`UPDATE users SET failed_logins = 0, locked_until = ? WHERE id = ?`, [until, user.id]);
+        return NextResponse.json(
+          { error: `Too many wrong passwords. This account is locked for ${LOCK_MINUTES} minutes.` },
+          { status: 429 }
+        );
+      }
+      await run(`UPDATE users SET failed_logins = ?, locked_until = NULL WHERE id = ?`, [failed, user.id]);
+      const left = MAX_FAILED_LOGINS - failed;
       return NextResponse.json(
-        { error: "Invalid username or password" },
+        { error: left <= 2 ? `Invalid username or password. ${left} attempt${left === 1 ? "" : "s"} left before the account is locked.` : "Invalid username or password" },
         { status: 401 }
       );
     }
@@ -68,7 +95,7 @@ export async function POST(req: Request) {
     await run(`INSERT OR IGNORE INTO prefs(user_id) VALUES(?)`, [user.id]);
 
     // RBAC FEATURE — track last login for the User Management table.
-    await run(`UPDATE users SET last_login = ? WHERE id = ?`, [nowIso(), user.id]);
+    await run(`UPDATE users SET last_login = ?, failed_logins = 0, locked_until = NULL WHERE id = ?`, [nowIso(), user.id]);
 
     const token = signToken({
       id: user.id,

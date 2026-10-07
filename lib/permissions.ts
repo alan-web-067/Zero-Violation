@@ -101,3 +101,12 @@ export function roleLabel(role: Role): string {
 export function applyDraftChanges(base: Row, changes: Partial<Record<DraftField, number>>): Row {
   return { ...base, ...changes };
 }
+
+// Password rule shared by account creation, admin reset and self-service change.
+export const PASSWORD_RULE = "At least 8 characters, with a letter and a number";
+
+export function passwordProblem(pw: string): string | null {
+  if (pw.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return "Password must contain at least one letter and one number.";
+  return null;
+}

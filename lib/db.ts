@@ -42,7 +42,7 @@ async function all<T = unknown>(sql: string, params: unknown[] = []) {
 // Every serverless cold start used to replay ~25 sequential migration queries
 // against remote Turso before answering. Now a single version check gates them.
 // BUMP THIS whenever you add/alter a table or seed below, so it runs once more.
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 5;
 
 let _initPromise: Promise<void> | null = null;
 
@@ -207,6 +207,9 @@ async function migrate() {
   try { await run(`ALTER TABLE users ADD COLUMN assigned_block_id INTEGER`); } catch { /* exists */ }
   try { await run(`ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`); } catch { /* exists */ }
   try { await run(`ALTER TABLE users ADD COLUMN last_login TEXT`); } catch { /* exists */ }
+  // Sign-in lockout after repeated wrong passwords (see app/api/auth/login).
+  try { await run(`ALTER TABLE users ADD COLUMN failed_logins INTEGER NOT NULL DEFAULT 0`); } catch { /* exists */ }
+  try { await run(`ALTER TABLE users ADD COLUMN locked_until TEXT`); } catch { /* exists */ }
 
   await run(`
     CREATE TABLE IF NOT EXISTS prefs (
@@ -296,6 +299,9 @@ async function migrate() {
       UNIQUE(user_id, block_id, year, month)
     )
   `);
+
+  // Rejected Block Manager changes keep a reason the Block Manager can read.
+  try { await run(`ALTER TABLE field_drafts ADD COLUMN reject_reason TEXT`); } catch { /* exists */ }
 
   // APPROVAL NOTIFICATIONS FEATURE
   await run(`

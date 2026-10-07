@@ -7,9 +7,10 @@
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
+import { passwordProblem } from "@/lib/permissions";
 import bcrypt from "bcryptjs";
 import { initDb, get, run } from "@/lib/db";
-import { requireAuth, requireAdmin, Role } from "@/lib/auth";
+import { requireAuth, requireAdmin, isFullAdmin, Role, errorStatus } from "@/lib/auth";
 
 const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "admin", "viewer"];
 
@@ -23,13 +24,36 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     const id = Number(idParam);
     if (!id) return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
 
-    const target = await get<{ id: number; username: string; role: Role }>(
-      `SELECT id, username, role FROM users WHERE id = ?`,
+    const target = await get<{ id: number; username: string; role: Role; status: string | null }>(
+      `SELECT id, username, role, status FROM users WHERE id = ?`,
       [id]
     );
     if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const body = await req.json().catch(() => ({}));
+
+    // Super Admin accounts can only be created, changed or reset by a Super Admin.
+    if ((target.role === "super_admin" || body.role === "super_admin") && requester.role !== "super_admin") {
+      return NextResponse.json({ error: "Only a Super Admin can change Super Admin accounts." }, { status: 403 });
+    }
+
+    // Never leave the site without someone who can manage it.
+    const newRole = body.role !== undefined ? (String(body.role) as Role) : target.role;
+    const newStatus = body.status !== undefined ? String(body.status) : target.status ?? "active";
+    const staysAdmin = isFullAdmin(newRole) && newStatus !== "disabled";
+    if (!staysAdmin && id === requester.uid) {
+      return NextResponse.json({ error: "You can't disable or demote your own account." }, { status: 400 });
+    }
+    if (!staysAdmin && isFullAdmin(target.role) && target.status !== "disabled") {
+      const others = await get<{ n: number }>(
+        `SELECT COUNT(*) AS n FROM users
+         WHERE id != ? AND role IN ('admin','super_admin') AND COALESCE(status,'active') != 'disabled'`,
+        [id]
+      );
+      if (!Number(others?.n)) {
+        return NextResponse.json({ error: "This is the last active admin account — it can't be disabled or demoted." }, { status: 400 });
+      }
+    }
     const updates: string[] = [];
     const values: unknown[] = [];
 
@@ -65,14 +89,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       }
       updates.push("status = ?");
       values.push(status);
+      if (status === "active") updates.push("failed_logins = 0", "locked_until = NULL");
     }
 
     if (body.password !== undefined) {
       const password = String(body.password || "").trim();
-      if (password.length < 6) {
-        return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
-      }
-      updates.push("password_hash = ?");
+      const problem = passwordProblem(password);
+      if (problem) return NextResponse.json({ error: problem }, { status: 400 });
+      // A new password also unlocks an account locked by failed sign-ins.
+      updates.push("password_hash = ?", "failed_logins = 0", "locked_until = NULL");
       values.push(bcrypt.hashSync(password, 10));
     }
 
@@ -85,7 +110,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    const status = e.message === "Admin only" ? 403 : 401;
+    const status = errorStatus(e);
     return NextResponse.json({ error: e.message || "Error" }, { status });
   }
 }

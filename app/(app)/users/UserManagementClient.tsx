@@ -15,6 +15,7 @@
 // entry in AppShell.tsx.
 // =====================================================================
 
+import PageSkeleton from "@/components/PageSkeleton";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -22,7 +23,7 @@ import { X } from "lucide-react";
 import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { fetchBlockDefs, BlockDef } from "@/lib/useKpiData";
 import type { Role } from "@/lib/auth";
-import { roleLabel } from "@/lib/permissions";
+import { roleLabel, passwordProblem, PASSWORD_RULE } from "@/lib/permissions";
 
 type UserDTO = {
   id: number;
@@ -30,10 +31,13 @@ type UserDTO = {
   role: Role;
   status: "active" | "disabled";
   lastLogin: string | null;
+  lockedUntil: string | null;
   assignedBlock: { id: string; name: string } | null;
 };
 
 const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "admin", "viewer"];
+// Roles that are turned off for now (same list as DISABLED_ROLES in lib/auth.ts).
+const DISABLED_ROLES: Role[] = ["hr", "accounting"];
 
 function fmtLastLogin(iso: string | null) {
   if (!iso) return "Never";
@@ -135,6 +139,8 @@ export default function UserManagementClient() {
     e.preventDefault();
     setCError("");
     if (!cUsername.trim() || !cPassword.trim()) { setCError("Username and password are required."); return; }
+    const cpProblem = passwordProblem(cPassword.trim());
+    if (cpProblem) { setCError(cpProblem); return; }
     if (cRole === "block_manager" && !cBlockId) { setCError("Choose a block to assign this Block Manager to."); return; }
     setCSaving(true);
     try {
@@ -190,6 +196,7 @@ export default function UserManagementClient() {
   // ---------- Disable / Enable ----------
   async function toggleStatus(u: UserDTO) {
     const next = u.status === "active" ? "disabled" : "active";
+    if (next === "disabled" && !window.confirm(`Disable "${u.username}"? They will not be able to sign in until enabled again.`)) return;
     try {
       await apiClient(`/api/users/${u.id}`, { method: "PATCH", body: JSON.stringify({ status: next }) });
       setToast(`User "${u.username}" ${next === "active" ? "enabled" : "disabled"} ✅`);
@@ -208,7 +215,8 @@ export default function UserManagementClient() {
     e.preventDefault();
     if (!pwTarget) return;
     setPwError("");
-    if (pwValue.trim().length < 6) { setPwError("Password must be at least 6 characters."); return; }
+    const pwProblem = passwordProblem(pwValue.trim());
+    if (pwProblem) { setPwError(pwProblem); return; }
     setPwSaving(true);
     try {
       await apiClient(`/api/users/${pwTarget.id}`, { method: "PATCH", body: JSON.stringify({ password: pwValue.trim() }) });
@@ -223,6 +231,8 @@ export default function UserManagementClient() {
 
   if (!mounted) return null;
 
+  if (!allowed && loading) return <PageSkeleton />;
+
   if (!allowed) {
     return (
       <>
@@ -235,7 +245,7 @@ export default function UserManagementClient() {
         <div className="page-body">
           <div className="empty-state">
             <div className="empty-state-icon">🔒</div>
-            <h3>Super Admin Access Only</h3>
+            <h3>Admin Access Only</h3>
             <p>You do not have permission to manage users.</p>
           </div>
         </div>
@@ -284,18 +294,29 @@ export default function UserManagementClient() {
                         <td><RoleBadge role={u.role} /></td>
                         <td>{u.assignedBlock ? u.assignedBlock.name : <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
                         <td>
-                          {u.status === "active"
+                          {DISABLED_ROLES.includes(u.role)
+                            ? <span className="badge badge-nodata" title="This role is turned off for now">Role turned off</span>
+                            : u.status === "active"
                             ? <span className="badge" style={{ background: "#dcfce7", color: "#065f46" }}>Active</span>
                             : <span className="badge" style={{ background: "#fee2e2", color: "#991b1b" }}>Disabled</span>}
+                          {u.lockedUntil && (
+                            <span className="badge" style={{ background: "#fef3c7", color: "#92400e", marginLeft: 4 }} title="Too many wrong passwords. Reset the password or wait to unlock.">
+                              🔒 Locked until {new Date(u.lockedUntil).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
                         </td>
                         <td style={{ fontSize: 12, color: "var(--text-muted)" }}>{fmtLastLogin(u.lastLogin)}</td>
                         <td>
                           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {DISABLED_ROLES.includes(u.role) ? (
+                              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>
+                            ) : (<>
                             <button className="btn btn-secondary btn-sm" onClick={() => openEdit(u)}>Edit</button>
-                            <button className="btn btn-secondary btn-sm" onClick={() => openResetPassword(u)}>Reset Password</button>
+                            <button className="btn btn-secondary btn-sm" onClick={() => openResetPassword(u)}>{u.lockedUntil ? "Reset & Unlock" : "Reset Password"}</button>
                             <button className="btn btn-secondary btn-sm" onClick={() => toggleStatus(u)}>
                               {u.status === "active" ? "Disable" : "Enable"}
                             </button>
+                            </>)}
                           </div>
                         </td>
                       </tr>
@@ -331,11 +352,11 @@ export default function UserManagementClient() {
                 {cError && <div className="add-block-error">{cError}</div>}
                 <div className="add-block-field">
                   <label className="form-label">Username</label>
-                  <input value={cUsername} onChange={(e) => setCUsername(e.target.value)} placeholder="e.g. jane.hr" autoFocus required />
+                  <input value={cUsername} onChange={(e) => setCUsername(e.target.value)} placeholder="e.g. jane.smith" autoFocus required />
                 </div>
                 <div className="add-block-field">
                   <label className="form-label">Password</label>
-                  <input value={cPassword} onChange={(e) => setCPassword(e.target.value)} placeholder="At least 6 characters" type="text" required />
+                  <input value={cPassword} onChange={(e) => setCPassword(e.target.value)} placeholder={PASSWORD_RULE} type="text" required />
                 </div>
                 <div className="add-block-field">
                   <label className="form-label">Role</label>
@@ -418,7 +439,7 @@ export default function UserManagementClient() {
                 </p>
                 <div className="add-block-field" style={{ marginBottom: 0 }}>
                   <label className="form-label">New Password</label>
-                  <input value={pwValue} onChange={(e) => setPwValue(e.target.value)} placeholder="At least 6 characters" autoFocus required />
+                  <input value={pwValue} onChange={(e) => setPwValue(e.target.value)} placeholder={PASSWORD_RULE} autoFocus required />
                 </div>
               </div>
               <div className="add-block-footer">
