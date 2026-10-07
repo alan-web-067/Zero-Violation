@@ -34,10 +34,11 @@ function pct(p: number) {
   return v === 0 ? "0%" : `−${v}%`;
 }
 
-function RuleTable({ n, title, note, head, rows }: {
+function RuleTable({ n, title, note, text, head, rows }: {
   n: number;
   title: string;
   note?: string;
+  text?: React.ReactNode;
   head?: string[];
   rows?: React.ReactNode[][];
 }) {
@@ -45,6 +46,7 @@ function RuleTable({ n, title, note, head, rows }: {
     <div style={{ marginTop: 18, marginBottom: 4 }}>
       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2 }}>{n}. {title}</div>
       {note && <div style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 6 }}>{note}</div>}
+      {text && <p style={{ margin: "4px 0 0" }}>{text}</p>}
       {head && rows && <div className="table-wrap" style={{ border: "1px solid var(--border)", borderRadius: 10 }}>
         <table className="data-table">
           <thead>
@@ -98,7 +100,7 @@ export default function ScoringClient() {
               <RuleTable
                 n={1}
                 title="Clean discount — 30% for every block with clean inspections"
-                note="Every block gets 30% off its violation points for its clean inspections, no matter how many clean inspections it has. Blocks that inspect more get extra reward from the inspection discount below."
+                text={<>Every block gets <strong>30% off</strong> its violation points for its clean inspections, no matter how many clean inspections it has. Blocks that inspect more get extra reward from the inspection discount below.</>}
               />
 
               <RuleTable
