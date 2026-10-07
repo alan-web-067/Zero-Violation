@@ -26,6 +26,8 @@ type Tx = Parameters<Parameters<typeof withTransaction>[0]>[0];
 // Merges the approved field(s) into one scope's saved month. The admin "draft"
 // scope is only touched if it exists — otherwise the next admin Publish (which
 // copies draft → published) would silently overwrite the approved change.
+const CLEAN_GT_TOTAL = "After this change clean inspections would be more than total inspections. Reject it and ask for corrected numbers.";
+
 async function mergeChangeInto(
   tx: Tx,
   scope: "published" | "draft",
@@ -69,6 +71,12 @@ async function mergeChangeInto(
     }
   }
 
+  // The merged row must still make sense (other numbers may have changed since the draft was made).
+  const merged = rows.find((r) => String(r.id) === blockId);
+  if (merged && Number(merged.cleanInspections || 0) > Number(merged.totalInspections || 0)) {
+    throw new Error(CLEAN_GT_TOTAL);
+  }
+
   await tx.run(
     `INSERT INTO month_results(scope, year, month, data_json, updated_at)
      VALUES(?, ?, ?, ?, ?)
@@ -94,6 +102,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (draft.status === "published") {
       return NextResponse.json({ error: "Draft already published" }, { status: 409 });
     }
+    if (draft.status === "rejected") {
+      return NextResponse.json({ error: "This change was rejected" }, { status: 409 });
+    }
 
     const isOwner = draft.user_id === user.uid;
     const ownerCanSelfPublish = isOwner && canSelfPublish(user.role);
@@ -113,6 +124,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       // Re-check inside the transaction so two approvals of the same draft can't both apply.
       const fresh = await tx.get<{ status: string }>(`SELECT status FROM field_drafts WHERE id = ?`, [id]);
       if (fresh?.status === "published") return true;
+      if (fresh?.status === "rejected") throw new Error("This change was rejected");
       await mergeChangeInto(tx, "published", draft.block_id, draft.year, draft.month, changes, published_at);
       await mergeChangeInto(tx, "draft", draft.block_id, draft.year, draft.month, changes, published_at);
       await tx.run(
@@ -129,7 +141,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: true, publishedAt: published_at });
   } catch (e: any) {
     const msg = String(e?.message || "Error");
-    const status = /token/i.test(msg) ? 401 : 500;
+    const status = /token/i.test(msg) ? 401 : msg === CLEAN_GT_TOTAL || msg === "This change was rejected" ? 409 : 500;
     return NextResponse.json({ error: msg }, { status });
   }
 }

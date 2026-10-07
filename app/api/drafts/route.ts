@@ -26,7 +26,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { initDb, get, all, run } from "@/lib/db";
-import { requireAuth, requireAdmin, nowIso, Role } from "@/lib/auth";
+import { requireAuth, requireAdmin, nowIso, Role, errorStatus } from "@/lib/auth";
 import { canEditField, isCompanyWideEditor, hasDraftStage, ALL_DRAFT_FIELDS } from "@/lib/permissions";
 import { fieldValueError, validPeriod } from "@/lib/kpi";
 
@@ -45,6 +45,7 @@ type DraftRow = {
   created_at: string;
   updated_at: string;
   published_at: string | null;
+  reject_reason: string | null;
 };
 
 function serializeDraft(r: DraftRow) {
@@ -61,6 +62,7 @@ function serializeDraft(r: DraftRow) {
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     publishedAt: r.published_at,
+    rejectReason: r.reject_reason ?? null,
   };
 }
 
@@ -99,7 +101,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ drafts: rows.map(serializeDraft) });
   } catch (e: any) {
-    const status = e.message === "Admin only" ? 403 : 401;
+    const status = errorStatus(e);
     return NextResponse.json({ error: e.message || "Error" }, { status });
   }
 }
@@ -180,12 +182,12 @@ export async function POST(req: NextRequest) {
       `INSERT INTO field_drafts(user_id, block_id, year, month, changes, status, created_at, updated_at)
        VALUES(?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(user_id, block_id, year, month)
-       DO UPDATE SET changes = excluded.changes, status = excluded.status, updated_at = excluded.updated_at, published_at = NULL`,
+       DO UPDATE SET changes = excluded.changes, status = excluded.status, updated_at = excluded.updated_at, published_at = NULL, reject_reason = NULL`,
       [user.uid, blockId, year, month, JSON.stringify(numericChanges), status, ts, ts]
     );
 
     return NextResponse.json({ ok: true, savedAt: ts, status });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || "Error" }, { status: 401 });
+    return NextResponse.json({ error: e.message || "Error" }, { status: errorStatus(e) });
   }
 }

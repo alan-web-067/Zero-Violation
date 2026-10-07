@@ -20,6 +20,7 @@ import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import { Row, RowWithKpi, calcKpi, applyKpiToRows, MONTHS, fmtPct } from "@/lib/kpi";
 import { loadPeriodRows, fetchBlockDefs } from "@/lib/useKpiData";
 import { roleLabel } from "@/lib/permissions";
+import PageSkeleton from "@/components/PageSkeleton";
 
 const BADGE_CLASS: Record<string, string> = {
   Perfect:   "badge badge-perfect",
@@ -37,7 +38,7 @@ type Me = {
 
 type DraftField = "teamMembers" | "trucks" | "cleanInspections" | "totalInspections" | "violationPoints";
 
-type DraftStatus = "draft" | "pending" | "published";
+type DraftStatus = "draft" | "pending" | "published" | "rejected";
 
 type DraftDTO = {
   id: number;
@@ -52,6 +53,7 @@ type DraftDTO = {
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+  rejectReason: string | null;
 };
 
 function monthLabel(month: number) {
@@ -85,6 +87,9 @@ function StatusPill({ status }: { status: DraftStatus }) {
   if (status === "pending") {
     return <span className="badge" style={{ background: "#fef3c7", color: "#92400e" }}>Pending review</span>;
   }
+  if (status === "rejected") {
+    return <span className="badge" style={{ background: "#fee2e2", color: "#991b1b" }}>Rejected</span>;
+  }
   return <span className="badge" style={{ background: "#e0e7ff", color: "#3730a3" }}>Draft</span>;
 }
 
@@ -100,6 +105,8 @@ function BlockManagerPanel({ me }: { me: Me }) {
     teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 0,
   });
   const [myDraft, setMyDraft] = useState<DraftDTO | null>(null);
+  const [rejected, setRejected] = useState<DraftDTO | null>(null);
+  const [loadError, setLoadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
 
@@ -114,6 +121,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
   async function load(p: PeriodState) {
     if (!block) { setLoading(false); return; }
     setLoading(true);
+    setLoadError("");
     try {
       // Rows and my drafts are independent — fetch both at once.
       const [rows, mine] = await Promise.all([
@@ -133,8 +141,10 @@ function BlockManagerPanel({ me }: { me: Me }) {
       }
 
       const drafts = (mine.drafts || []) as DraftDTO[];
-      const own = drafts.find((d) => d.blockId === block.id && d.year === p.year && d.month === p.month && d.status === "pending") || null;
+      const forPeriod = (d: DraftDTO) => d.blockId === block.id && d.year === p.year && d.month === p.month;
+      const own = drafts.find((d) => forPeriod(d) && d.status === "pending") || null;
       setMyDraft(own);
+      setRejected(own ? null : drafts.find((d) => forPeriod(d) && d.status === "rejected") || null);
       if (own && row) {
         setDraftValues({
           teamMembers: own.changes.teamMembers ?? row.teamMembers,
@@ -144,6 +154,9 @@ function BlockManagerPanel({ me }: { me: Me }) {
           violationPoints: own.changes.violationPoints ?? row.violationPoints,
         });
       }
+    } catch {
+      setCurrent(null);
+      setLoadError("Could not load your block's numbers. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -191,7 +204,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
         method: "POST",
         body: JSON.stringify({ blockId: block.id, year: period.year, month: period.month, changes }),
       });
-      setToast("Draft saved ✅ — visible only to you until a Super Admin publishes it");
+      setToast("Submitted for review ✅ — an admin will approve or reject it");
       await load(period);
     } catch (e: any) {
       setToast(e?.message || "Could not save draft ❌");
@@ -236,6 +249,12 @@ function BlockManagerPanel({ me }: { me: Me }) {
         </div>
       ) : loading ? (
         <div className="card"><div className="card-body"><div className="empty-state"><p>Loading…</p></div></div></div>
+      ) : loadError ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">⚠️</div>
+          <h3>{loadError}</h3>
+          <button className="btn btn-secondary btn-sm" onClick={() => load(period)}>Retry</button>
+        </div>
       ) : !current ? (
         <div className="empty-state">
           <div className="empty-state-icon">📭</div>
@@ -255,12 +274,19 @@ function BlockManagerPanel({ me }: { me: Me }) {
               </p>
               {myDraft && (
                 <div className="rbac-note">
-                  You have a pending draft for this period — {myDraft.status === "pending" ? "awaiting Super Admin review" : "already published"}.
+                  You have a change waiting for admin review for this period.
                   {myDraft.status === "pending" && (
                     <button className="btn btn-secondary btn-sm" style={{ marginLeft: 10 }} onClick={discardDraft} disabled={saving}>
                       Discard draft
                     </button>
                   )}
+                </div>
+              )}
+              {rejected && (
+                <div className="rbac-note" style={{ background: "#fef2f2", borderColor: "#fecaca", color: "#991b1b" }}>
+                  ✖ Your change from {new Date(rejected.updatedAt).toLocaleDateString()} was rejected by an admin
+                  {rejected.rejectReason ? <> — <strong>&ldquo;{rejected.rejectReason}&rdquo;</strong></> : "."}
+                  {" "}You can fix the numbers below and submit again.
                 </div>
               )}
             </div>
@@ -270,7 +296,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
             <div className="card">
               <div className="card-header">
                 <h2 className="card-title">🧪 What If Analysis</h2>
-                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Local simulation — nothing is saved until you click Save Draft</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>Local simulation — nothing is sent until you click Submit for review</span>
               </div>
               <div className="card-body">
                 <div className="whatif-grid">
@@ -290,11 +316,11 @@ function BlockManagerPanel({ me }: { me: Me }) {
                 <div className="edit-mode-actions" style={{ marginTop: 14 }}>
                   <button className="btn btn-secondary btn-sm" onClick={resetToPublished} disabled={saving}>Reset to current</button>
                   <button className="btn btn-primary btn-sm" onClick={saveDraft} disabled={saving || !changedFields.length}>
-                    {saving ? "Saving…" : "💾 Save Draft"}
+                    {saving ? "Sending…" : "📨 Submit for review"}
                   </button>
                 </div>
                 <p style={{ marginTop: 10, fontSize: 12, color: "var(--text-muted)" }}>
-                  Block Managers cannot publish — drafts are reviewed and published by a Super Admin, and stay private to you until then.
+                  Block Managers cannot publish — saving sends your change to an admin, who approves or rejects it. Nobody else sees it until it is approved.
                 </p>
               </div>
             </div>
@@ -584,6 +610,7 @@ function ApprovalQueuePanel() {
   const [currentByPeriod, setCurrentByPeriod] = useState<Record<string, RowWithKpi[]>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
   const [toast, setToast] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     if (!toast) return;
@@ -595,6 +622,7 @@ function ApprovalQueuePanel() {
 
   async function load() {
     setLoading(true);
+    setLoadError("");
     try {
       const out = await apiClient("/api/drafts?scope=pending");
       const list = (out.drafts || []) as DraftDTO[];
@@ -608,6 +636,8 @@ function ApprovalQueuePanel() {
         map[key] = applyKpiToRows(raw);
       }));
       setCurrentByPeriod(map);
+    } catch {
+      setLoadError("Could not load the review queue.");
     } finally {
       setLoading(false);
     }
@@ -627,10 +657,12 @@ function ApprovalQueuePanel() {
   }
 
   async function reject(d: DraftDTO) {
+    const reason = window.prompt(`Reject ${d.username}'s change for ${d.blockName}?\n\nReason (optional — ${d.username} will see it):`, "");
+    if (reason === null) return;
     setBusyId(d.id);
     try {
-      await apiClient(`/api/drafts/${d.id}/discard`, { method: "POST" });
-      setToast(`Rejected ${d.username}'s draft for ${d.blockName}`);
+      await apiClient(`/api/drafts/${d.id}/reject`, { method: "POST", body: JSON.stringify({ reason }) });
+      setToast(`Rejected ${d.username}'s change for ${d.blockName}`);
       await load();
     } catch (e: any) {
       setToast(e?.message || "Could not reject ❌");
@@ -651,6 +683,12 @@ function ApprovalQueuePanel() {
         <div className="card-body no-pad">
           {loading ? (
             <div className="empty-state"><p>Loading…</p></div>
+          ) : loadError ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">⚠️</div>
+              <h3>{loadError}</h3>
+              <button className="btn btn-secondary btn-sm" onClick={load}>Retry</button>
+            </div>
           ) : !drafts.length ? (
             <div className="empty-state">
               <div className="empty-state-icon">✅</div>
@@ -747,6 +785,8 @@ export default function WorkspaceClient() {
   }
 
   if (!mounted) return null;
+
+  if (!denied && !me) return <PageSkeleton />;
 
   if (denied || !me) {
     return (
