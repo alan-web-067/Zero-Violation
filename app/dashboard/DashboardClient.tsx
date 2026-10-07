@@ -390,6 +390,28 @@ export default function DashboardClient() {
       <div className="page-body">
         <PeriodSelector period={period} onChange={handlePeriodChange} disabled={loading} />
 
+        {/* Team of the Month — hero, first thing on the page */}
+        {winner && !loading && winner.kpi.finalKpi <= 6.0 && (
+          <div className="winner-banner">
+            <div className="winner-trophy">🏆</div>
+            <div className="winner-info">
+              <h3>{period.view === "quarter" ? "Team of the Quarter" : "Team of the Month"}</h3>
+              <div className="winner-name">{winner.name}</div>
+              <div className="winner-kpi">
+                Final KPI: {winner.kpi.finalKpi.toFixed(2)} ·{" "}
+                <span className={BADGE_CLASS[winner.kpi.status]}>{winner.kpi.status}</span>
+                {(() => {
+                  const streak = streakBadge(winner.name);
+                  return streak ? <span className="badge badge-winner" style={{ marginLeft: 6 }}>{streak.emoji} {streak.label}</span> : null;
+                })()}
+              </div>
+              <div className="winner-kpi" style={{ opacity: 0.85, fontSize: 12 }}>
+                Why: {kpiReasons(winner).join(" · ")}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* PHASE1 FEATURE — Alox Insights (locally generated executive summary) */}
         {ENABLE_ALOX_SUMMARY && !loading && aloxInsights.length > 0 && (
           <div className="card alox-insights-card" style={{ marginBottom: 14 }}>
@@ -473,28 +495,6 @@ export default function DashboardClient() {
                   KPI improved by <strong>{mostImproved.improvement.toFixed(2)}</strong> vs last period
                   {" "}({mostImproved.row.kpi.finalKpi.toFixed(2)} now)
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Winner banner */}
-        {winner && !loading && winner.kpi.finalKpi <= 6.0 && (
-          <div className="winner-banner">
-            <div className="winner-trophy">🏆</div>
-            <div className="winner-info">
-              <h3>{period.view === "quarter" ? "Team of the Quarter" : "Team of the Month"}</h3>
-              <div className="winner-name">{winner.name}</div>
-              <div className="winner-kpi">
-                Final KPI: {winner.kpi.finalKpi.toFixed(2)} ·{" "}
-                <span className={BADGE_CLASS[winner.kpi.status]}>{winner.kpi.status}</span>
-                {(() => {
-                  const streak = streakBadge(winner.name);
-                  return streak ? <span className="badge badge-winner" style={{ marginLeft: 6 }}>{streak.emoji} {streak.label}</span> : null;
-                })()}
-              </div>
-              <div className="winner-kpi" style={{ opacity: 0.85, fontSize: 12 }}>
-                Why: {kpiReasons(winner).join(" · ")}
               </div>
             </div>
           </div>

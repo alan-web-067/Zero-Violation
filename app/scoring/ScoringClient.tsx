@@ -53,7 +53,7 @@ export default function ScoringClient() {
             <div className="card-header"><h2 className="card-title">The rules</h2></div>
             <div className="card-body" style={{ fontSize: 13, lineHeight: 1.7 }}>
               <p style={{ marginTop: 0 }}><strong>Lower Final KPI = better.</strong> Each month starts from the block&apos;s violation points:</p>
-              <ol style={{ paddingLeft: 18, margin: 0 }}>
+              <ol style={{ paddingLeft: 20, margin: 0, listStyle: "decimal" }}>
                 <li><strong>Clean discount</strong> — up to 30% off, based on clean ÷ total inspections (100% clean = −30%, 50% clean = −15%).</li>
                 <li><strong>Inspection discount</strong> — from {MIN_INSPECTIONS_FOR_DISCOUNT} inspections, 1% off for every 10 (100 = −10%, 300 = −30%). No discount below {MIN_INSPECTIONS_FOR_DISCOUNT}.</li>
                 <li><strong>Workload</strong> — target is {TRUCKS_PER_MEMBER} trucks per team member. Points are multiplied by expected ÷ actual trucks, between ×0.5 and ×2. Checking twice the target halves the points; half the target doubles them.</li>
@@ -71,15 +71,14 @@ export default function ScoringClient() {
             <div className="card-body">
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
                 {FIELDS.map(([f, label]) => (
-                  <label key={f} style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>
-                    {label}
+                  <div key={f} className="add-block-field" style={{ marginBottom: 0 }}>
+                    <label className="form-label">{label}</label>
                     <input
                       inputMode="numeric"
                       value={String(row[f] ?? 0)}
                       onChange={(e) => set(f, e.target.value)}
-                      style={{ display: "block", width: "100%", marginTop: 4 }}
                     />
-                  </label>
+                  </div>
                 ))}
               </div>
               {invalid ? (

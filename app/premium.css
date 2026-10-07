@@ -1,0 +1,260 @@
+/* ===================================================
+   PREMIUM THEME LAYER — ALGO GROUP
+   Loaded after globals.css (see app/layout.tsx). Deep emerald + gold.
+   Remove the import in layout.tsx to return to the previous look.
+   =================================================== */
+
+:root {
+  --gold-500: #d4a73c;
+  --gold-400: #e6be5a;
+  --gold-300: #f2d68b;
+  --gold-100: #fbf1d6;
+  --emerald-950: #031f15;
+  --emerald-900: #052e20;
+  --emerald-800: #07402c;
+  --emerald-700: #0a5c3c;
+  --premium-radius: 16px;
+  --premium-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.12);
+  --premium-shadow-hover: 0 2px 4px rgba(15, 23, 42, 0.05), 0 18px 40px -16px rgba(6, 78, 46, 0.28);
+}
+
+/* ---------- Page background ---------- */
+:root:not([data-theme="dark"]) body {
+  background:
+    radial-gradient(1200px 500px at 70% -10%, rgba(16, 180, 106, 0.08), transparent 60%),
+    radial-gradient(900px 400px at 100% 100%, rgba(212, 167, 60, 0.06), transparent 60%),
+    #f3f6f4;
+  background-attachment: fixed;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  background:
+    radial-gradient(420px 260px at 0% 0%, rgba(230, 190, 90, 0.16), transparent 60%),
+    radial-gradient(300px 300px at 100% 100%, rgba(16, 180, 106, 0.18), transparent 70%),
+    linear-gradient(180deg, var(--emerald-800) 0%, var(--emerald-900) 55%, var(--emerald-950) 100%);
+  box-shadow: 4px 0 30px rgba(3, 31, 21, 0.25);
+  border-right: 1px solid rgba(230, 190, 90, 0.12);
+}
+
+.sidebar-logo {
+  padding: 22px 18px 18px;
+  border-bottom: 1px solid rgba(230, 190, 90, 0.16);
+}
+
+.sidebar-logo img {
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(230, 190, 90, 0.5), 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-logo-text .brand-name { letter-spacing: 0.6px; }
+.sidebar-logo-text .brand-sub { color: var(--gold-300); opacity: 0.85; }
+
+.sidebar-section-label { color: rgba(242, 214, 139, 0.55); letter-spacing: 1.2px; }
+
+.sidebar-link {
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.74);
+  transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+}
+.sidebar-link:hover { background: rgba(255, 255, 255, 0.07); color: #fff; transform: translateX(2px); }
+.sidebar-link.active {
+  background: linear-gradient(90deg, rgba(230, 190, 90, 0.20), rgba(255, 255, 255, 0.06));
+  color: #fff;
+  box-shadow: inset 3px 0 0 var(--gold-400), 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.sidebar-link.active svg { color: var(--gold-300); }
+
+.sidebar-footer { border-top: 1px solid rgba(230, 190, 90, 0.14); }
+
+/* ---------- Page header ---------- */
+:root:not([data-theme="dark"]) .page-header {
+  background: rgba(255, 255, 255, 0.78);
+  border-bottom: 1px solid rgba(6, 78, 46, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 6px 20px -14px rgba(6, 78, 46, 0.25);
+}
+.page-header { height: 62px; }
+.page-header h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+
+/* ---------- Cards ---------- */
+.card,
+.stat-card {
+  border-radius: var(--premium-radius);
+  transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 240ms ease;
+}
+:root:not([data-theme="dark"]) .card,
+:root:not([data-theme="dark"]) .stat-card {
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: var(--premium-shadow);
+}
+:root:not([data-theme="dark"]) .card:hover { box-shadow: var(--premium-shadow-hover); }
+:root:not([data-theme="dark"]) .card-header {
+  background: linear-gradient(180deg, #ffffff, #fafcfb);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+.card-title { font-weight: 800; letter-spacing: -0.2px; }
+
+/* ---------- Stat cards ---------- */
+.stat-card { padding: 22px 24px; }
+.stat-card:hover { transform: translateY(-3px); }
+:root:not([data-theme="dark"]) .stat-card:hover { box-shadow: var(--premium-shadow-hover); }
+.stat-card::before { height: 4px; background: linear-gradient(90deg, var(--card-accent, var(--green-600)), transparent 140%); }
+.stat-card::after { width: 130px; height: 130px; top: -46px; right: -46px; }
+.stat-card.accent-green { --card-accent: var(--gold-500); --card-orb: rgba(212, 167, 60, 0.10); }
+.stat-label { letter-spacing: 0.9px; font-size: 10.5px; }
+.stat-value { font-size: 32px; letter-spacing: -1px; }
+
+/* ---------- Team of the Month — hero banner ---------- */
+.winner-banner {
+  position: relative;
+  overflow: hidden;
+  padding: 26px 30px;
+  gap: 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(230, 190, 90, 0.45);
+  background:
+    radial-gradient(520px 220px at 12% 0%, rgba(230, 190, 90, 0.28), transparent 65%),
+    radial-gradient(420px 240px at 100% 100%, rgba(16, 180, 106, 0.30), transparent 70%),
+    linear-gradient(120deg, var(--emerald-900) 0%, var(--emerald-700) 100%);
+  box-shadow: 0 20px 50px -24px rgba(3, 31, 21, 0.65), 0 0 0 1px rgba(230, 190, 90, 0.15) inset;
+}
+.winner-banner::after {
+  /* slow sheen across the banner */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.08) 50%, transparent 60%);
+  transform: translateX(-100%);
+  animation: premiumSheen 6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes premiumSheen {
+  0%, 60% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.winner-trophy {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  font-size: 32px;
+  border-radius: 18px;
+  background: radial-gradient(circle at 30% 25%, var(--gold-300), var(--gold-500) 70%);
+  box-shadow: 0 10px 24px -8px rgba(212, 167, 60, 0.7), 0 0 0 4px rgba(230, 190, 90, 0.18);
+}
+.winner-info h3 { color: var(--gold-300); letter-spacing: 1.4px; font-size: 12px; }
+.winner-info .winner-name {
+  font-size: 30px;
+  letter-spacing: -0.6px;
+  background: linear-gradient(90deg, #ffffff 0%, var(--gold-300) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.winner-info .winner-kpi { color: rgba(255, 255, 255, 0.85); }
+.winner-banner .badge-perfect,
+.winner-banner .badge-excellent,
+.winner-banner .badge-good,
+.winner-banner .badge-poor { background: rgba(255, 255, 255, 0.14); color: #fff; border-color: rgba(255, 255, 255, 0.25); }
+.winner-banner .badge-winner { background: var(--gold-400); color: var(--emerald-950); border: none; }
+/* Leaderboard banner's "Needs Improvement" side stays readable on the dark hero */
+.winner-banner > div[style*="margin-left: auto"] div { color: #fecaca !important; }
+.winner-banner > div[style*="margin-left: auto"] div:nth-child(2) { color: #ffffff !important; }
+
+/* ---------- Highlight cards ---------- */
+:root:not([data-theme="dark"]) .alox-insights-card {
+  border-left: 0;
+  background:
+    radial-gradient(400px 160px at 0% 0%, rgba(16, 180, 106, 0.10), transparent 70%),
+    #ffffff;
+  box-shadow: inset 4px 0 0 var(--green-600), var(--premium-shadow);
+}
+:root:not([data-theme="dark"]) .most-improved-card {
+  border-left: 0;
+  background:
+    radial-gradient(400px 160px at 0% 0%, rgba(139, 92, 246, 0.10), transparent 70%),
+    #ffffff;
+  box-shadow: inset 4px 0 0 #8b5cf6, var(--premium-shadow);
+}
+
+/* ---------- Tables ---------- */
+:root:not([data-theme="dark"]) table.data-table thead tr { background: #f7faf8; }
+table.data-table th { letter-spacing: 0.9px; }
+:root:not([data-theme="dark"]) table.data-table tbody tr { transition: background 150ms ease; }
+:root:not([data-theme="dark"]) table.data-table tbody tr:hover { background: rgba(16, 180, 106, 0.04); }
+:root:not([data-theme="dark"]) table.data-table tbody tr.rank-1 {
+  background: linear-gradient(90deg, rgba(230, 190, 90, 0.16), rgba(230, 190, 90, 0.02) 60%) !important;
+}
+
+.rank-num.gold {
+  background: radial-gradient(circle at 30% 25%, var(--gold-300), var(--gold-500));
+  color: var(--emerald-950);
+  box-shadow: 0 4px 10px -4px rgba(212, 167, 60, 0.8);
+}
+
+/* ---------- Buttons ---------- */
+.btn-primary {
+  background: linear-gradient(135deg, var(--green-600) 0%, var(--emerald-700) 100%);
+  box-shadow: 0 6px 16px -8px rgba(6, 78, 46, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--green-500) 0%, var(--green-700) 100%);
+  box-shadow: 0 10px 22px -10px rgba(6, 78, 46, 0.8);
+}
+
+/* ---------- Badges ---------- */
+.badge { letter-spacing: 0.2px; }
+.badge-winner {
+  background: linear-gradient(135deg, var(--gold-300), var(--gold-400)) !important;
+  color: var(--emerald-950) !important;
+  border: 1px solid rgba(212, 167, 60, 0.5) !important;
+}
+
+/* ---------- Dark theme touches ---------- */
+[data-theme="dark"] .winner-banner { border-color: rgba(230, 190, 90, 0.35); }
+[data-theme="dark"] .stat-card:hover,
+[data-theme="dark"] .card:hover { box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6); }
+
+@media (prefers-reduced-motion: reduce) {
+  .winner-banner::after { animation: none; }
+  .stat-card:hover, .sidebar-link:hover { transform: none; }
+}
+
+/* ---------- Login page (classes from app/page.tsx; doubled selectors beat its inline <style>) ---------- */
+.ll-root.ll-root {
+  background:
+    radial-gradient(900px 500px at 10% -10%, rgba(230, 190, 90, 0.18), transparent 60%),
+    radial-gradient(800px 600px at 100% 110%, rgba(16, 180, 106, 0.22), transparent 60%),
+    linear-gradient(160deg, var(--emerald-900) 0%, var(--emerald-950) 100%);
+}
+.ll-root .ll-blob { opacity: 0.35; }
+.ll-root .ll-wrapper {
+  box-shadow: 0 0 0 1px rgba(230, 190, 90, 0.25), 0 40px 90px -30px rgba(0, 0, 0, 0.65);
+}
+.ll-root .ll-right {
+  background:
+    radial-gradient(420px 300px at 30% 0%, rgba(230, 190, 90, 0.22), transparent 60%),
+    radial-gradient(380px 300px at 90% 100%, rgba(16, 180, 106, 0.28), transparent 65%),
+    linear-gradient(160deg, var(--emerald-700) 0%, var(--emerald-900) 100%);
+  border-left: 1px solid rgba(230, 190, 90, 0.25);
+}
+.ll-root .ll-right-dots { background-image: radial-gradient(rgba(242, 214, 139, 0.25) 1.2px, transparent 1.2px); opacity: 0.45; }
+.ll-root .ll-right-glow { background: radial-gradient(circle, rgba(230, 190, 90, 0.22) 0%, transparent 60%); }
+.ll-root .ll-ring-1 { border-color: rgba(230, 190, 90, 0.22); background: radial-gradient(circle, rgba(230, 190, 90, 0.06) 0%, transparent 68%); }
+.ll-root .ll-ring-2 { border-color: rgba(230, 190, 90, 0.30); background: radial-gradient(circle, rgba(16, 180, 106, 0.14) 0%, transparent 68%); }
+.ll-root .ll-ring-3 { border-color: rgba(230, 190, 90, 0.45); background: radial-gradient(circle, rgba(16, 180, 106, 0.24) 0%, transparent 68%); }
+.ll-root .ll-particle { background: var(--gold-300); box-shadow: 0 0 6px rgba(230, 190, 90, 0.7); }
+.ll-root .ll-alox-name { color: var(--gold-300); opacity: 0.9; }
+.ll-root .ll-company-name { color: #ffffff; font-size: 16px; letter-spacing: 0.4px; }
+.ll-root .ll-company-sub { color: rgba(242, 214, 139, 0.75); }
+.ll-root .ll-submit {
+  background: linear-gradient(135deg, var(--green-600) 0%, var(--emerald-700) 100%);
+  box-shadow: 0 12px 26px -12px rgba(6, 78, 46, 0.8), 0 0 0 1px rgba(230, 190, 90, 0.25) inset;
+}
+
+/* ---------- Table polish ---------- */
+/* Keep block names (and the inline rename pencil) on one line. */
+table.data-table td strong { white-space: nowrap; }
+table.data-table td:has(> strong) { white-space: nowrap; }
+table.data-table th,
+table.data-table td { padding-left: 10px; padding-right: 10px; }
