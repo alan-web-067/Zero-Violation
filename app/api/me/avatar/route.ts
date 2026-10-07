@@ -17,7 +17,7 @@ const ALLOWED_TYPES: Record<string, string> = {
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const u = requireAuth(req);
+    const u = await requireAuth(req);
 
     let form: FormData;
     try {
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   await initDb();
   try {
-    const u = requireAuth(req);
+    const u = await requireAuth(req);
 
     const row = await get<{ avatar_url: string | null }>(`SELECT avatar_url FROM users WHERE id = ?`, [u.uid]);
     if (row?.avatar_url?.startsWith("https://")) {

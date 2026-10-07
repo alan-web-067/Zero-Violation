@@ -1,6 +1,7 @@
 // lib/auth.ts
 import jwt from "jsonwebtoken";
 import { NextRequest } from "next/server";
+import { get } from "@/lib/db";
 
 // RBAC FEATURE — widened role union. The original "admin"/"viewer" roles and
 // every check built on them keep working unchanged; the four new roles below
@@ -12,7 +13,15 @@ export type Role = "admin" | "viewer" | "super_admin" | "block_manager" | "hr" |
 
 export type JwtUser = { uid: number; username: string; role: Role };
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
+// The dev fallback is never used in production — a missing JWT_SECRET there would
+// let anyone forge tokens, so signing/verifying fails loudly instead.
+const JWT_SECRET =
+  process.env.JWT_SECRET || (process.env.NODE_ENV === "production" ? "" : "dev_secret_change_me");
+
+function jwtSecret(): string {
+  if (!JWT_SECRET) throw new Error("Server misconfigured: JWT_SECRET is not set");
+  return JWT_SECRET;
+}
 
 // Roles turned off for now — they can't sign in or use existing tokens.
 // Remove a role from this list to bring it back (its code is untouched).
@@ -25,7 +34,7 @@ export function signToken(user: {
 }): string {
   return jwt.sign(
     { uid: user.id, username: user.username, role: user.role },
-    JWT_SECRET,
+    jwtSecret(),
     { expiresIn: "7d" }
   );
 }
@@ -36,19 +45,29 @@ export function readBearer(req: NextRequest): string {
   return "";
 }
 
-export function requireAuth(req: NextRequest): JwtUser {
+// Verifies the token, then re-checks the account in the DB so disabling a user,
+// changing their role, or turning a role off takes effect immediately (not after
+// the 7-day token expires). The returned role is the current one from the DB.
+export async function requireAuth(req: NextRequest): Promise<JwtUser> {
   const token = readBearer(req);
   if (!token) throw new Error("Missing token");
+  let payload: JwtUser;
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JwtUser;
-    if (!payload?.uid || !payload?.username || !payload?.role) {
-      throw new Error("Malformed token");
-    }
-    if (DISABLED_ROLES.includes(payload.role)) throw new Error("Role disabled");
-    return payload;
-  } catch (err) {
+    payload = jwt.verify(token, jwtSecret()) as JwtUser;
+  } catch {
     throw new Error("Invalid or expired token");
   }
+  if (!payload?.uid || !payload?.username || !payload?.role) {
+    throw new Error("Invalid or expired token");
+  }
+  const row = await get<{ username: string; role: Role; status: string | null }>(
+    `SELECT username, role, status FROM users WHERE id = ?`,
+    [payload.uid]
+  );
+  if (!row || row.status === "disabled" || DISABLED_ROLES.includes(row.role)) {
+    throw new Error("Invalid or expired token");
+  }
+  return { uid: payload.uid, username: row.username, role: row.role };
 }
 
 // RBAC FEATURE — "super_admin" is a full-access role equivalent to "admin" in

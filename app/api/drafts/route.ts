@@ -66,7 +66,7 @@ function serializeDraft(r: DraftRow) {
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     const { searchParams } = new URL(req.url);
     const scope = String(searchParams.get("scope") || "mine");
 
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (!DRAFT_ROLES.includes(user.role)) {
       return NextResponse.json({ error: "Your role cannot create drafts" }, { status: 403 });
     }

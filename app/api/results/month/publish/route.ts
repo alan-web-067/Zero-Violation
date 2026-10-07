@@ -8,7 +8,7 @@ import { nowIso, requireAdmin, requireAuth } from "@/lib/auth";
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     requireAdmin(user);
 
     const body = await req.json().catch(() => ({}));

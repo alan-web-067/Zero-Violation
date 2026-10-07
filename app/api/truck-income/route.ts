@@ -13,7 +13,7 @@ function canAccess(role: string) {
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (!canAccess(user.role)) return NextResponse.json({ error: "Access denied" }, { status: 403 });
 
     const { searchParams } = new URL(req.url);
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (!canAccess(user.role)) return NextResponse.json({ error: "Access denied" }, { status: 403 });
 
     const body = await req.json();

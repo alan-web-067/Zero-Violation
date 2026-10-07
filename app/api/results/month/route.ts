@@ -8,7 +8,7 @@ import { requireAuth, isFullAdmin } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
 
     const { searchParams } = new URL(req.url);
     const year = Number(searchParams.get("year"));

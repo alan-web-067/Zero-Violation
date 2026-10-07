@@ -32,7 +32,7 @@ function toApi(b: BlockRow) {
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    requireAuth(req);
+    await requireAuth(req);
     const rows = await all<BlockRow>(`SELECT * FROM blocks ORDER BY sort_order ASC, id ASC`);
     return NextResponse.json({ blocks: rows.map(toApi) });
   } catch (e: any) {
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     requireAdmin(user);
 
     const body = await req.json().catch(() => ({}));

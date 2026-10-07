@@ -20,7 +20,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function POST(req: NextRequest, ctx: Ctx) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (user.role !== "hr" && user.role !== "admin" && user.role !== "super_admin") {
       return NextResponse.json({ error: "HR access required" }, { status: 403 });
     }
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (user.role !== "hr" && user.role !== "admin" && user.role !== "super_admin") {
       return NextResponse.json({ error: "HR access required" }, { status: 403 });
     }

@@ -70,7 +70,7 @@ async function mergeChangeIntoPublished(
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     const { id: idParam } = await ctx.params;
     const id = Number(idParam);
     if (!id) return NextResponse.json({ error: "Invalid draft id" }, { status: 400 });

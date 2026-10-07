@@ -27,7 +27,7 @@ type UserRow = {
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     requireAdmin(user);
 
     const rows = await all<UserRow>(`
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     requireAdmin(user);
 
     const body = await req.json().catch(() => ({}));

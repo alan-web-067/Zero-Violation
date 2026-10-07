@@ -18,7 +18,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(req: NextRequest, ctx: Ctx) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (!canRead(user.role)) return NextResponse.json({ error: "Access denied" }, { status: 403 });
     const { id } = await ctx.params;
     const member = await get<any>(`
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 export async function PUT(req: NextRequest, ctx: Ctx) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (!canWrite(user.role)) return NextResponse.json({ error: "HR access required" }, { status: 403 });
     const { id } = await ctx.params;
 
@@ -75,7 +75,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 export async function DELETE(req: NextRequest, ctx: Ctx) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (!canWrite(user.role)) return NextResponse.json({ error: "HR access required" }, { status: 403 });
     const { id } = await ctx.params;
     await run(`UPDATE members SET status='deleted', updated_at=? WHERE id=?`, [nowIso(), Number(id)]);

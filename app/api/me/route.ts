@@ -8,7 +8,7 @@ import { requireAuth } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    const u = requireAuth(req);
+    const u = await requireAuth(req);
     const row = await get<{ avatar_url: string | null; assigned_block_id: number | null }>(
       `SELECT avatar_url, assigned_block_id FROM users WHERE id = ?`,
       [u.uid]

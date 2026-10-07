@@ -16,7 +16,7 @@ const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "admin", "view
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   await initDb();
   try {
-    const requester = requireAuth(req);
+    const requester = await requireAuth(req);
     requireAdmin(requester);
 
     const { id: idParam } = await ctx.params;

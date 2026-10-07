@@ -9,7 +9,7 @@ import { requireAuth, nowIso, isFullAdmin } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (user.role !== "hr" && !isFullAdmin(user.role) && user.role !== "super_admin") {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (user.role !== "hr") {
       return NextResponse.json({ error: "HR access required to submit" }, { status: 403 });
     }

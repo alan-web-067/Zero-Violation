@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function POST(req: NextRequest, ctx: Ctx) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     if (!isFullAdmin(user.role)) {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }

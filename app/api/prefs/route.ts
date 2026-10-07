@@ -8,7 +8,7 @@ import { requireAuth } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
 
     const row = await get<any>(
       `SELECT theme_mode, accent, font_scale, snow_enabled FROM prefs WHERE user_id=?`,
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     const body = await req.json().catch(() => ({}));
     const { theme_mode, accent, font_scale, snow_enabled } = body || {};
 

@@ -32,7 +32,7 @@ function toApi(b: BlockRow) {
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   await initDb();
   try {
-    const user = requireAuth(req);
+    const user = await requireAuth(req);
     requireAdmin(user);
 
     const { id } = await ctx.params;

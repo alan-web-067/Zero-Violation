@@ -222,7 +222,7 @@ function generalAnswer(message: string): string | null {
 
 export async function POST(req: NextRequest) {
   try {
-    requireAuth(req);
+    await requireAuth(req);
   } catch {
     return NextResponse.json({ error: "Please sign in to use Alox." }, { status: 401 });
   }

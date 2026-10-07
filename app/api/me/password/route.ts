@@ -8,7 +8,7 @@ import { requireAuth } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    const u = requireAuth(req);
+    const u = await requireAuth(req);
 
     let body: { currentPassword?: string; newPassword?: string } = {};
     try {

@@ -336,7 +336,8 @@ async function migrate() {
     { username: "blockmanager", password: "BlockManager@123", role: "block_manager", assignedBlockName: "D BLOCK" },
   ];
 
-  for (const demo of RBAC_DEMO_USERS) {
+  // Demo accounts have publicly known passwords — never create them in production.
+  for (const demo of process.env.NODE_ENV === "production" ? [] : RBAC_DEMO_USERS) {
     const existing = await get<{ id: number }>(`SELECT id FROM users WHERE username = ?`, [demo.username]);
     if (existing?.id) continue;
 
