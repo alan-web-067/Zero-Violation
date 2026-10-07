@@ -26,7 +26,7 @@ const BADGE_CLASS: Record<string, string> = {
 
 // Examples for the rule tables — values come from calcKpi(), so they always match the real scoring.
 const EXAMPLE_BASE: Row = { id: "ex", name: "ex", teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 10 };
-const CLEAN_EXAMPLES: Array<[number, number]> = [[100, 100], [90, 100], [80, 100], [70, 100], [50, 100], [0, 100]];
+const CLEAN_EXAMPLES: Array<[number, number]> = [[100, 100], [30, 40], [5, 20], [0, 40]];
 const INSPECTION_EXAMPLES = [40, 50, 100, 200, 300, 500];
 const WORKLOAD_EXAMPLES = [400, 300, 200, 150, 100];
 
@@ -98,8 +98,8 @@ export default function ScoringClient() {
 
               <RuleTable
                 n={1}
-                title="Clean discount — up to 30%, based on what share of inspections were clean"
-                note="The full 30% from 90% clean. Below that, the discount shrinks evenly toward 0."
+                title="Clean discount — 30% for every block with clean inspections"
+                note="Same 30% whether it is 30 of 40 or 100 of 100. Blocks that inspect more get extra reward from the inspection discount below."
                 head={["Clean / Total", "Clean rate", "Clean discount"]}
                 rows={CLEAN_EXAMPLES.map(([c, t]) => {
                   const k = calcKpi({ ...EXAMPLE_BASE, cleanInspections: c, totalInspections: t });
@@ -142,7 +142,7 @@ export default function ScoringClient() {
               />
 
               <p style={{ marginBottom: 0 }}>
-                <strong>Example:</strong> 10 violation points, 200 inspections, 180 clean → 90% clean (−30%) + 200 inspections (−20%)
+                <strong>Example:</strong> 10 violation points, 200 inspections, 180 clean → clean inspections (−30%) + 200 inspections (−20%)
                 = −50% → <strong>5 points</strong>, then the workload adjustment gives the Final KPI.
                 When two blocks tie, the higher clean rate wins, then more inspections, then more trucks per member.
               </p>

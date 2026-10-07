@@ -78,7 +78,7 @@ function explainScore() {
   return [
     "How the Final KPI works (lower is better):",
     "1. Start with the block's violation points.",
-    "2. Clean discount: up to 30% off, scaled by clean ÷ total inspections (90% clean or more = −30%, 80% = −27%, 50% = −17%).",
+    "2. Clean discount: a flat 30% off for any block with clean inspections (30 of 40 and 100 of 100 both get −30%).",
     `3. Inspection discount: from ${MIN_INSPECTIONS_FOR_DISCOUNT} inspections, 1% off per 10 inspections (100 = −10%, 300 = −30%). Quarters use the monthly average.`,
     `4. Workload: violations are scaled by expected ÷ actual trucks (target ${TRUCKS_PER_MEMBER} per team member), between ×0.5 and ×2.`,
     "5. Status: Perfect ≤ 2, Excellent ≤ 6, Good ≤ 8.9, otherwise Poor (per month).",
