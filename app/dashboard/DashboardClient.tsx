@@ -9,8 +9,10 @@ import {
 } from "recharts";
 import AppShell from "@/components/AppShell";
 import DraftBadge from "@/components/DraftBadge";
-import HrDashboardClient from "./HrDashboardClient";
-import AccountingDashboardClient from "./AccountingDashboardClient";
+import dynamic from "next/dynamic";
+// HR / Accounting roles are turned off — load their dashboards only if ever needed.
+const HrDashboardClient = dynamic(() => import("./HrDashboardClient"), { ssr: false });
+const AccountingDashboardClient = dynamic(() => import("./AccountingDashboardClient"), { ssr: false });
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient, getMe } from "@/lib/apiClient";
 import {
