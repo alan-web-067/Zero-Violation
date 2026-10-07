@@ -1,37 +1,30 @@
+// app/api/alox-chat/route.ts — Alox, the rule-based KPI assistant (no external AI).
+// Answers from the latest published month using the same KPI pipeline as every
+// page (lib/kpi.ts), so its rankings always match the Leaderboard.
 import { NextRequest, NextResponse } from "next/server";
-import { initDb, get } from "@/lib/db";
+import { initDb, get, all } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
+import {
+  BlockDef,
+  Row,
+  RowWithKpi,
+  MONTHS,
+  TRUCKS_PER_MEMBER,
+  MIN_INSPECTIONS_FOR_DISCOUNT,
+  applyKpiToRows,
+  kpiReasons,
+  mergeWithBase,
+  rankedOnly,
+  sortByKpi,
+} from "@/lib/kpi";
 
 export const runtime = "nodejs";
 
-type BlockFact = {
-  name: string;
-  finalKpi: number;
-  violationPoints: number;
-  totalIns: number;
-  cleanIns: number;
-  trucks: number;
-  status: string;
-  isActive: boolean;
-};
-
-type DashboardFacts = {
-  totalBlocks: number;
-  activeBlocks: number;
-  bestBlock: BlockFact | null;
-  weakestBlock: BlockFact | null;
+type Facts = {
+  periodLabel: string | null;
+  all: RowWithKpi[];      // sorted, includes "No data" blocks at the end
+  ranked: RowWithKpi[];   // blocks with data, best first
   averageKpi: number;
-  perfectBlocks: BlockFact[];
-  excellentBlocks: BlockFact[];
-  goodBlocks: BlockFact[];
-  poorBlocks: BlockFact[];
-  ranking: Array<{
-    rank: number;
-    name: string;
-    finalKpi: number;
-    violationPoints: number;
-    status: string;
-    isActive: boolean;
-  }>;
 };
 
 function cleanAloxText(text: string) {
@@ -40,570 +33,218 @@ function cleanAloxText(text: string) {
     .replace(/\*/g, "")
     .replace(/#{1,6}\s/g, "")
     .replace(/```/g, "")
-    .replace(/\s{2,}/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
     .trim();
 }
 
-function safeNumber(value: any): number {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-
-  if (value === null || value === undefined) return 0;
-
-  const cleaned = String(value).replace("%", "").trim();
-
-  if (!cleaned || cleaned === "—" || cleaned === "-") return 0;
-
-  const num = Number(cleaned);
-
-  return Number.isFinite(num) ? num : 0;
-}
-
-function normalizeKey(key: string) {
-  return key.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function getValue(item: any, names: string[]) {
-  if (!item || typeof item !== "object") return undefined;
-
-  for (const name of names) {
-    if (item[name] !== undefined) return item[name];
-  }
-
-  const normalizedNames = names.map(normalizeKey);
-
-  for (const key of Object.keys(item)) {
-    if (normalizedNames.includes(normalizeKey(key))) {
-      return item[key];
-    }
-  }
-
-  return undefined;
-}
-
-function findBlockRows(data: any): any[] {
-  if (!data || typeof data !== "object") return [];
-
-  const arrays: any[][] = [];
-
-  function walk(value: any) {
-    if (!value || typeof value !== "object") return;
-
-    if (Array.isArray(value)) {
-      arrays.push(value);
-      value.forEach(walk);
-      return;
-    }
-
-    Object.values(value).forEach(walk);
-  }
-
-  walk(data);
-
-  let bestArray: any[] = [];
-  let bestScore = 0;
-
-  for (const arr of arrays) {
-    let score = 0;
-
-    for (const item of arr) {
-      if (!item || typeof item !== "object" || Array.isArray(item)) continue;
-
-      const keys = Object.keys(item).join(" ").toLowerCase();
-
-      if (keys.includes("block")) score += 5;
-      if (keys.includes("kpi")) score += 5;
-      if (keys.includes("viol")) score += 3;
-      if (keys.includes("status")) score += 2;
-      if (keys.includes("inspection") || keys.includes("ins")) score += 1;
-      if (keys.includes("truck")) score += 1;
-    }
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestArray = arr;
-    }
-  }
-
-  return bestArray.filter(
-    (item) => item && typeof item === "object" && !Array.isArray(item)
+async function loadFacts(): Promise<Facts> {
+  const row = await get<{ data_json: string; year: number; month: number }>(
+    `SELECT data_json, year, month FROM month_results
+     WHERE scope = 'published' ORDER BY year DESC, month DESC LIMIT 1`
   );
-}
+  const blockRows = await all<{
+    id: number; name: string; team_members: number; trucks: number;
+    starting_kpi: number; notes: string; status: "active" | "inactive"; sort_order: number;
+  }>(`SELECT * FROM blocks ORDER BY sort_order ASC, id ASC`);
 
-function buildDashboardFacts(dashboardData: any): DashboardFacts {
-  try {
-    const rawData = dashboardData?.data || null;
-    const rows = findBlockRows(rawData);
+  const defs: BlockDef[] = blockRows.map((b) => ({
+    id: String(b.id), name: b.name, teamMembers: b.team_members, trucks: b.trucks,
+    startingKpi: b.starting_kpi, notes: b.notes, status: b.status, sortOrder: b.sort_order,
+  }));
 
-    const blocks: BlockFact[] = rows.map((item) => {
-      const name =
-        getValue(item, ["block", "blockName", "name", "title"]) ||
-        "Unknown block";
-
-      const finalKpi = safeNumber(
-        getValue(item, [
-          "finalKpi",
-          "final_kpi",
-          "finalKPI",
-          "final KPI",
-          "kpi",
-          "afterClean",
-          "after_clean",
-        ])
-      );
-
-      const violationPoints = safeNumber(
-        getValue(item, [
-          "violPoints",
-          "violationPoints",
-          "viol_points",
-          "violation_points",
-          "points",
-          "viol. points",
-        ])
-      );
-
-      const totalIns = safeNumber(
-        getValue(item, [
-          "totalIns",
-          "total_ins",
-          "totalInspections",
-          "total_inspections",
-          "inspections",
-          "total ins.",
-          "total ins",
-        ])
-      );
-
-      const cleanIns = safeNumber(
-        getValue(item, [
-          "cleanIns",
-          "clean_ins",
-          "cleanInspections",
-          "clean_inspections",
-          "clean ins.",
-          "clean ins",
-        ])
-      );
-
-      const trucks = safeNumber(
-        getValue(item, ["trucks", "truckCount", "truck_count"])
-      );
-
-      const status = getValue(item, ["status", "result", "rating"]) || "";
-
-      const isActive =
-        totalIns > 0 || cleanIns > 0 || trucks > 0 || violationPoints > 0;
-
-      return {
-        name: String(name),
-        finalKpi,
-        violationPoints,
-        totalIns,
-        cleanIns,
-        trucks,
-        status: String(status),
-        isActive,
-      };
-    });
-
-    const activeBlocks = blocks.filter((b) => b.isActive);
-    const rankingBlocks = activeBlocks.length > 0 ? activeBlocks : blocks;
-
-    const ranking = [...rankingBlocks].sort((a, b) => {
-      if (a.finalKpi !== b.finalKpi) return a.finalKpi - b.finalKpi;
-      return a.violationPoints - b.violationPoints;
-    });
-
-    const worstRanking = [...rankingBlocks].sort((a, b) => {
-      if (b.finalKpi !== a.finalKpi) return b.finalKpi - a.finalKpi;
-      return b.violationPoints - a.violationPoints;
-    });
-
-    const averageKpi =
-      rankingBlocks.length > 0
-        ? rankingBlocks.reduce((sum, b) => sum + b.finalKpi, 0) /
-          rankingBlocks.length
-        : 0;
-
-    const byStatus = (statusName: string) =>
-      blocks.filter(
-        (b) => b.status.toLowerCase() === statusName.toLowerCase()
-      );
-
-    return {
-      totalBlocks: blocks.length,
-      activeBlocks: activeBlocks.length,
-      bestBlock: ranking[0] || null,
-      weakestBlock: worstRanking[0] || null,
-      averageKpi: Number(averageKpi.toFixed(2)),
-      perfectBlocks: byStatus("Perfect"),
-      excellentBlocks: byStatus("Excellent"),
-      goodBlocks: byStatus("Good"),
-      poorBlocks: byStatus("Poor"),
-      ranking: ranking.map((b, index) => ({
-        rank: index + 1,
-        name: b.name,
-        finalKpi: b.finalKpi,
-        violationPoints: b.violationPoints,
-        status: b.status,
-        isActive: b.isActive,
-      })),
-    };
-  } catch (error) {
-    console.error("Alox buildDashboardFacts error:", error);
-
-    return {
-      totalBlocks: 0,
-      activeBlocks: 0,
-      bestBlock: null,
-      weakestBlock: null,
-      averageKpi: 0,
-      perfectBlocks: [],
-      excellentBlocks: [],
-      goodBlocks: [],
-      poorBlocks: [],
-      ranking: [],
-    };
+  let data: Row[] | null = null;
+  if (row) {
+    try { data = JSON.parse(row.data_json) as Row[]; } catch { data = null; }
   }
+
+  const sorted = sortByKpi(applyKpiToRows(mergeWithBase(data, defs)));
+  const ranked = rankedOnly(sorted);
+  const averageKpi = ranked.length
+    ? Math.round((ranked.reduce((s, r) => s + r.kpi.finalKpi, 0) / ranked.length) * 100) / 100
+    : 0;
+  const periodLabel = row ? `${MONTHS[row.month - 1]?.name ?? row.month} ${row.year}` : null;
+
+  return { periodLabel, all: sorted, ranked, averageKpi };
 }
 
-function isGreeting(message: string) {
-  const m = message.trim().toLowerCase();
+const has = (m: string, ...words: string[]) => words.some((w) => m.includes(w));
 
+function describe(r: RowWithKpi, rank?: number) {
+  const pos = rank ? `#${rank} ` : "";
+  return `${pos}${r.name} — KPI ${r.kpi.finalKpi.toFixed(2)} (${r.kpi.status}): ${kpiReasons(r).join(", ")}.`;
+}
+
+function explainScore() {
   return [
-    "hi",
-    "hello",
-    "hey",
-    "hii",
-    "hiii",
-    "ok",
-    "okay",
-    "salom",
-    "assalomu aleykum",
-    "assalamu alaykum",
-  ].includes(m);
+    "How the Final KPI works (lower is better):",
+    "1. Start with the block's violation points.",
+    "2. Clean discount: up to 30% off, scaled by clean ÷ total inspections (100% clean = −30%).",
+    `3. Inspection discount: from ${MIN_INSPECTIONS_FOR_DISCOUNT} inspections, 1% off per 10 inspections (100 = −10%, 300 = −30%). Quarters use the monthly average.`,
+    `4. Workload: violations are scaled by expected ÷ actual trucks (target ${TRUCKS_PER_MEMBER} per team member), between ×0.5 and ×2.`,
+    "5. Status: Perfect ≤ 2, Excellent ≤ 6, Good ≤ 8.9, otherwise Poor (per month).",
+    "Blocks with nothing entered show \"No data\" and are not ranked. Ties go to the higher clean rate, then more inspections, then more trucks per member.",
+  ].join("\n");
 }
 
-function isHowAreYou(message: string) {
+// Finds a block named in the question, preferring the longest match ("FIRST B BLOCK" over "B BLOCK").
+function findNamedBlock(m: string, facts: Facts): RowWithKpi | null {
+  const hits = facts.all.filter((r) => m.includes(r.name.toLowerCase()));
+  return hits.sort((a, b) => b.name.length - a.name.length)[0] ?? null;
+}
+
+function websiteAnswer(message: string, facts: Facts): string | null {
   const m = message.trim().toLowerCase();
+  const { ranked, periodLabel } = facts;
+  const period = periodLabel ? ` (${periodLabel}, published)` : "";
+  const noData = "There is no published data yet. Once a month is published I can answer this.";
 
-  return (
-    m.includes("how are you") ||
-    m.includes("how r u") ||
-    m.includes("how are u") ||
-    m.includes("how you doing") ||
-    m.includes("how are you doing")
-  );
-}
-
-function wantsBestBlock(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("best block") ||
-    m.includes("winner") ||
-    m.includes("top block") ||
-    m.includes("which block is best") ||
-    m.includes("which block is the best") ||
-    m.includes("block is best") ||
-    m.includes("block is the best") ||
-    m.includes("best now") ||
-    m.includes("best right now")
-  );
-}
-
-function wantsWeakBlock(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("needs improvement") ||
-    m.includes("need improvement") ||
-    m.includes("worst block") ||
-    m.includes("weak block") ||
-    m.includes("which block is bad") ||
-    m.includes("which block is the worst") ||
-    m.includes("needs attention") ||
-    m.includes("need attention") ||
-    m.includes("attention")
-  );
-}
-
-function wantsSummary(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("june summary") ||
-    m.includes("monthly summary") ||
-    m.includes("short summary") ||
-    m.includes("report summary") ||
-    m.includes("summary")
-  );
-}
-
-function wantsPerfectBlocks(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("perfect blocks") ||
-    m.includes("show perfect") ||
-    m.includes("which blocks are perfect") ||
-    m.includes("perfect block")
-  );
-}
-
-function wantsAverageKpi(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("average kpi") ||
-    m.includes("avg kpi") ||
-    m.includes("average performance")
-  );
-}
-
-function wantsActiveBlocks(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("active blocks") ||
-    m.includes("how many active") ||
-    m.includes("active block")
-  );
-}
-
-function wantsRanking(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("ranking") ||
-    m.includes("rank") ||
-    m.includes("leaderboard") ||
-    m.includes("top blocks")
-  );
-}
-
-function wantsDashboardPageHelp(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("dashboard page") ||
-    m.includes("what is dashboard") ||
-    m.includes("explain dashboard")
-  );
-}
-
-function wantsReportsPageHelp(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("reports page") ||
-    m.includes("what is reports") ||
-    m.includes("explain reports") ||
-    m.includes("report page")
-  );
-}
-
-function wantsAdminPageHelp(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("admin page") ||
-    m.includes("admin edit") ||
-    m.includes("admin / edit") ||
-    m.includes("edit page")
-  );
-}
-
-function wantsAnalyticsPageHelp(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("analytics page") ||
-    m.includes("what is analytics") ||
-    m.includes("explain analytics")
-  );
-}
-
-function wantsCompanyLookupHelp(message: string) {
-  const m = message.trim().toLowerCase();
-
-  return (
-    m.includes("company lookup") ||
-    m.includes("lookup page") ||
-    m.includes("company search")
-  );
-}
-
-function formatBlockList(blocks: BlockFact[]) {
-  if (!blocks.length) return "No blocks found.";
-  return blocks.map((b) => b.name).join(", ");
-}
-
-function localWebsiteAnswer(message: string, facts: DashboardFacts) {
-  if (wantsBestBlock(message)) {
-    if (!facts.bestBlock) return "I need dashboard data to answer exactly.";
-
-    return `${facts.bestBlock.name} is the best active block now. Its final KPI is ${facts.bestBlock.finalKpi}. Lower KPI is better.`;
+  // Score explanation must come before "rank" matching.
+  if (has(m, "how is ranking", "how is the ranking", "how is kpi", "how is the kpi", "how is score",
+    "how is the score", "how does the score", "how does ranking", "calculated", "formula", "how kpi works")) {
+    return explainScore();
   }
 
-  if (wantsWeakBlock(message)) {
-    if (!facts.weakestBlock) return "I need dashboard data to answer exactly.";
-
-    return `${facts.weakestBlock.name} needs the most attention. Its final KPI is ${facts.weakestBlock.finalKpi}, and violation points are ${facts.weakestBlock.violationPoints}.`;
+  const named = findNamedBlock(m, facts);
+  if (named) {
+    if (named.kpi.noData) return `${named.name} has no data${period}.`;
+    const rank = ranked.findIndex((r) => r.id === named.id) + 1;
+    const lead = rank === 1 ? `${named.name} is ranked #1 of ${ranked.length}${period}.` : `${named.name} is ranked #${rank} of ${ranked.length}${period}.`;
+    return `${lead}\n${describe(named)}`;
   }
 
-  if (wantsSummary(message)) {
-    if (!facts.bestBlock || !facts.weakestBlock) {
-      return "I need dashboard data to answer exactly.";
+  if (has(m, "most violation", "highest violation", "violation ranking", "violations ranking")) {
+    if (!ranked.length) return noData;
+    const byViol = [...ranked].sort((a, b) => b.kpi.violPoint - a.kpi.violPoint);
+    if (has(m, "ranking")) {
+      return `Violation points${period}, highest first:\n` +
+        byViol.map((r, i) => `${i + 1}. ${r.name} — ${r.kpi.violPoint} points`).join("\n");
     }
-
-    return `Summary: ${facts.activeBlocks} blocks are active. Average KPI is ${facts.averageKpi}. Best active block is ${facts.bestBlock.name}. ${facts.weakestBlock.name} needs more attention.`;
+    return `${byViol[0].name} has the most violation points${period}: ${byViol[0].kpi.violPoint}.`;
   }
 
-  if (wantsPerfectBlocks(message)) {
-    return `Perfect blocks: ${formatBlockList(facts.perfectBlocks)}.`;
+  if (has(m, "best", "winner", "top block", "performing best", "number one", "#1")) {
+    if (!ranked.length) return noData;
+    if (has(m, "top 3", "top three")) {
+      return `Top 3${period}:\n` + ranked.slice(0, 3).map((r, i) => describe(r, i + 1)).join("\n");
+    }
+    return `Best block${period}:\n${describe(ranked[0], 1)}`;
   }
 
-  if (wantsAverageKpi(message)) {
-    return `Average KPI is ${facts.averageKpi}. Lower KPI is better.`;
+  if (has(m, "top 3", "top three")) {
+    if (!ranked.length) return noData;
+    return `Top 3${period}:\n` + ranked.slice(0, 3).map((r, i) => describe(r, i + 1)).join("\n");
   }
 
-  if (wantsActiveBlocks(message)) {
-    return `${facts.activeBlocks} blocks are active now.`;
+  if (has(m, "weakest", "worst", "weak block", "needs improvement", "need improvement", "attention", "lowest")) {
+    if (!ranked.length) return noData;
+    const w = ranked[ranked.length - 1];
+    return `${w.name} needs the most attention${period}.\n${describe(w, ranked.length)}`;
   }
 
-  if (wantsRanking(message)) {
-    if (!facts.ranking.length) return "I need dashboard data to show ranking.";
-
-    const top = facts.ranking
-      .slice(0, 5)
-      .map((b) => `${b.rank}. ${b.name} — KPI ${b.finalKpi}`)
-      .join("\n");
-
-    return `Top ranking:\n${top}`;
+  if (has(m, "perfect")) {
+    const p = ranked.filter((r) => r.kpi.status === "Perfect");
+    return p.length ? `Perfect blocks${period}: ${p.map((r) => r.name).join(", ")}.` : `No block is Perfect${period}.`;
   }
 
-  if (wantsDashboardPageHelp(message)) {
-    return "Dashboard page shows the main picture. It shows best block, weak block, average KPI, active blocks, status summary, and KPI trend.";
+  if (has(m, "average")) {
+    if (!ranked.length) return noData;
+    return `Average KPI${period} is ${facts.averageKpi.toFixed(2)} across ${ranked.length} blocks with data. Lower is better.`;
   }
 
-  if (wantsReportsPageHelp(message)) {
-    return "Reports page shows monthly and quarterly results. It helps you prepare CSV, PDF, and management summaries.";
+  if (has(m, "active block", "active blocks", "how many active")) {
+    const empty = facts.all.length - ranked.length;
+    return `${ranked.length} blocks have data${period}` + (empty ? `; ${empty} show "No data".` : ".");
   }
 
-  if (wantsAdminPageHelp(message)) {
-    return "Admin / Edit page is where admins change the numbers. You can update blocks, trucks, inspections, violation points, staff adjustment, and KPI data there.";
+  if (has(m, "summary", "what happened", "this month", "overview")) {
+    if (!ranked.length) return noData;
+    const statuses = ["Perfect", "Excellent", "Good", "Poor"]
+      .map((s) => [s, ranked.filter((r) => r.kpi.status === s).length] as const)
+      .filter(([, n]) => n > 0)
+      .map(([s, n]) => `${n} ${s}`)
+      .join(", ");
+    const parts = [
+      `Summary${period}: ${ranked.length} blocks ranked (${statuses}). Average KPI ${facts.averageKpi.toFixed(2)}.`,
+      `Best: ${ranked[0].name} (${ranked[0].kpi.finalKpi.toFixed(2)}).`,
+    ];
+    if (ranked.length > 1) {
+      const w = ranked[ranked.length - 1];
+      parts.push(`Needs attention: ${w.name} (${w.kpi.finalKpi.toFixed(2)}).`);
+    }
+    return parts.join(" ");
   }
 
-  if (wantsAnalyticsPageHelp(message)) {
-    return "Analytics page helps you understand trends. It can show changes by block, month, and performance.";
+  if (has(m, "leaderboard", "ranking", "rank")) {
+    if (!ranked.length) return noData;
+    return `Leaderboard${period}:\n` + ranked.map((r, i) => `${i + 1}. ${r.name} — KPI ${r.kpi.finalKpi.toFixed(2)} (${r.kpi.status})`).join("\n");
   }
 
-  if (wantsCompanyLookupHelp(message)) {
-    return "Company Lookup page helps you search company information and review company details.";
+  if (has(m, "what can i edit", "can i edit", "how do i edit", "enter numbers")) {
+    return "Admins edit numbers on Admin / Edit: team members, trucks checked, clean inspections, total inspections and violation points for each block and month. Save Draft keeps it private; Publish makes it visible to everyone. Block Managers propose changes for their own block in My Workspace, and an admin approves them.";
+  }
+
+  if (has(m, "dashboard page", "explain dashboard", "what is dashboard")) {
+    return "The Dashboard shows the Team of the Month (and why it won), the block that needs improvement, average KPI, active blocks, Most Improved, status summary and the KPI trend for the year.";
+  }
+  if (has(m, "reports page", "report page", "explain reports", "what is reports")) {
+    return "Reports shows the full monthly or quarterly table with every KPI step, and lets you download CSV or print/PDF. Admins can also add, edit, rename or deactivate blocks there.";
+  }
+  if (has(m, "admin page", "admin edit", "admin / edit", "edit page", "explain admin")) {
+    return "Admin / Edit is where admins enter each block's monthly numbers, see the KPI preview live, save a draft or publish, and add or rename blocks.";
+  }
+  if (has(m, "analytics page", "explain analytics", "what is analytics")) {
+    return "Analytics shows each block's KPI month by month and by quarter, plus the best and worst block of every month.";
+  }
+  if (has(m, "company lookup", "lookup page", "company search")) {
+    return "Company Lookup is coming soon.";
   }
 
   return null;
 }
 
-function localGeneralAnswer(message: string) {
+function generalAnswer(message: string): string | null {
   const m = message.trim().toLowerCase();
 
-  if (isGreeting(message)) {
-    return "Hello. I am Alox, your KPI adviser assistant. Ask me about block performance, KPI, drivers, trucks, or any page on this dashboard.";
+  if (["hi", "hello", "hey", "hii", "hiii", "ok", "okay", "salom", "assalomu aleykum", "assalamu alaykum"].includes(m)) {
+    return "Hello. I am Alox, your KPI adviser. Ask me about block performance, rankings, the score formula, or any page.";
   }
-
-  if (isHowAreYou(message)) {
-    return "I am running well and ready to help with your dashboard data.";
+  if (has(m, "how are you", "how r u", "how are u", "how you doing")) {
+    return "I am running well and ready to help with your KPI data.";
   }
-
-  if (
-    m.includes("who are you") ||
-    m.includes("who r u") ||
-    m.includes("what is alox") ||
-    m.includes("what's alox") ||
-    m.includes("what are you")
-  ) {
-    return "I am Alox — the KPI adviser assistant for Zero Violations. I read your dashboard data directly and can answer questions about blocks, KPI scores, drivers, checked trucks, rankings, and what each page shows.";
+  if (has(m, "who are you", "who r u", "what is alox", "what's alox", "what are you")) {
+    return "I am Alox — the KPI adviser for Zero Violations. I read the latest published results and answer questions about blocks, KPI scores, rankings and pages.";
   }
-
-  if (m.includes("what can you answer") || m.includes("what can you do") || m.includes("how can you help")) {
-    return "I can tell you which block is performing best or needs attention, explain KPI and ranking, summarize the current month, list active or perfect blocks, and walk you through any page on this dashboard. Open the Questions Library below for ready-made examples.";
+  if (has(m, "what can you answer", "what can you do", "how can you help")) {
+    return "I can tell you the best block, the top 3, which block needs attention, the full leaderboard, average KPI, perfect blocks, most violations, a monthly summary, how the score is calculated, and details for any block by name (e.g. \"Explain C BLOCK performance\").";
   }
-
   return null;
 }
 
 export async function POST(req: NextRequest) {
   try {
+    requireAuth(req);
+  } catch {
+    return NextResponse.json({ error: "Please sign in to use Alox." }, { status: 401 });
+  }
+
+  try {
     await initDb();
 
-    const body = await req.json();
-
-    const message = body.message;
-
+    const body = await req.json().catch(() => ({}));
+    const message = body?.message;
     if (!message || typeof message !== "string") {
-      return NextResponse.json(
-        { error: "Message is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    const row = await get<any>(
-      `SELECT data_json, updated_at, year, month, scope
-       FROM month_results
-       WHERE scope = ?
-       ORDER BY year DESC, month DESC
-       LIMIT 1`,
-      ["published"]
-    );
-
-    let dashboardData: any = null;
-
-    if (row) {
-      try {
-        dashboardData = {
-          year: row.year,
-          month: row.month,
-          scope: row.scope,
-          updated_at: row.updated_at,
-          data: JSON.parse(row.data_json),
-        };
-      } catch (error) {
-        console.error("Alox JSON parse error:", error);
-      }
-    }
-
-    const calculatedFacts = buildDashboardFacts(dashboardData);
-
-    const websiteAnswer = localWebsiteAnswer(message, calculatedFacts);
-    const generalAnswer = localGeneralAnswer(message);
-
+    const facts = await loadFacts();
     const reply =
-      websiteAnswer ||
-      generalAnswer ||
-      "I am Alox, your KPI adviser assistant. I can answer questions like best block, needs improvement, monthly summary, average KPI, active blocks, ranking, drivers, checked trucks, and page explanations — try one from the Questions Library below.";
+      websiteAnswer(message, facts) ||
+      generalAnswer(message) ||
+      "I can answer questions like: best block, top 3, which block needs attention, leaderboard, average KPI, most violations, monthly summary, how the score is calculated, or \"Explain C BLOCK performance\". Try one from the Questions Library below.";
 
-    return NextResponse.json({
-      reply: cleanAloxText(reply),
-      usedData: dashboardData
-        ? {
-            year: dashboardData.year,
-            month: dashboardData.month,
-            scope: dashboardData.scope,
-            updated_at: dashboardData.updated_at,
-          }
-        : null,
-      calculatedFacts,
-    });
-  } catch (error: any) {
+    return NextResponse.json({ reply: cleanAloxText(reply), period: facts.periodLabel });
+  } catch (error) {
     console.error("Alox API route error:", error);
-
-    return NextResponse.json(
-      {
-        error: "Alox could not answer right now. Please check the route.ts code.",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Alox could not answer right now." }, { status: 500 });
   }
 }

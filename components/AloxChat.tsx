@@ -5,6 +5,7 @@ import Image from "next/image";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as ScrollArea from "@radix-ui/react-scroll-area";
 import { X, Send, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
 
 type ChatMessage = {
   role: "user" | "alox";
@@ -48,7 +49,7 @@ const QUESTION_GROUPS = [
     questions: [
       "Give me dashboard summary",
       "What happened this month?",
-      "Show June summary",
+      "Show monthly summary",
       "Show active blocks",
       "Show violation ranking",
       "Which block has most violations?",
@@ -131,20 +132,18 @@ export default function AloxChat() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/alox-chat", {
+      const data = await apiClient("/api/alox-chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userText }),
       });
-      const data = await res.json();
       setMessages((prev) => [
         ...prev,
-        { role: "alox", text: data.reply || data.error || "Alox could not answer this question yet." },
+        { role: "alox", text: data.reply || "Alox could not answer this question yet." },
       ]);
-    } catch {
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { role: "alox", text: "Connection error. Please try again." },
+        { role: "alox", text: err instanceof Error && err.message ? err.message : "Connection error. Please try again." },
       ]);
     } finally {
       setLoading(false);
