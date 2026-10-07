@@ -8,7 +8,7 @@ import { X, MoreVertical } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
-import { applyKpiToRows, sortByKpi, fmtPct, MONTHS, Row } from "@/lib/kpi";
+import { applyKpiToRows, sortByKpi, rankedOnly, fmtPct, MONTHS, Row } from "@/lib/kpi";
 import { loadPeriodRows, fetchBlockDefs, invalidateBlockDefsCache, BlockDef } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
@@ -18,6 +18,7 @@ const BADGE_CLASS: Record<string, string> = {
   Excellent: "badge badge-excellent",
   Good:      "badge badge-good",
   Poor:      "badge badge-poor",
+  "No data": "badge badge-nodata",
 };
 
 function emptyToNumber(s: string) {
@@ -201,13 +202,15 @@ export default function ReportsClient() {
   // Period-scoped report summary — lowest Final KPI = best, so sorted[0] is the
   // Winner and the last entry Needs Improvement. Derived purely from `sorted`,
   // never recomputed — this must stay a read-only view over the existing KPI pipeline.
+  const rankedCount = useMemo(() => rankedOnly(sorted).length, [sorted]);
   const reportSummary = useMemo(() => {
-    if (sorted.length === 0) return null;
+    const ranked = rankedOnly(sorted);
+    if (ranked.length === 0) return null;
     return {
-      winner: sorted[0],
-      needsImprovement: sorted[sorted.length - 1],
-      avgKpi: sorted.reduce((s, r) => s + r.kpi.finalKpi, 0) / sorted.length,
-      activeBlocks: sorted.filter((r) => r.trucks > 0 || r.violationPoints > 0).length,
+      winner: ranked[0],
+      needsImprovement: ranked[ranked.length - 1],
+      avgKpi: ranked.reduce((s, r) => s + r.kpi.finalKpi, 0) / ranked.length,
+      activeBlocks: ranked.length,
     };
   }, [sorted]);
 
@@ -453,7 +456,7 @@ export default function ReportsClient() {
     const header = [
       "Rank","Block","Team Members","Trucks Checked","Clean Inspections",
       "Total Inspections","Violation Points","Staff Adj.","Staff %",
-      "Clean 30%","After Clean","Final KPI","Status",
+      "Clean Adj.","After Clean","Final KPI","Status",
     ];
     lines.push(header.join(","));
     sorted.forEach((r, idx) => {
@@ -574,7 +577,7 @@ export default function ReportsClient() {
                       <th className="num">Viol. Points</th>
                       <th className="num">Staff Adj.</th>
                       <th className="num">Staff %</th>
-                      <th className="num">Clean −30%</th>
+                      <th className="num">Clean Adj.</th>
                       <th className="num">After Clean</th>
                       <th className="num">Final KPI</th>
                       <th>Status</th>
@@ -587,7 +590,7 @@ export default function ReportsClient() {
                       return (
                         <tr
                           key={r.id}
-                          className={`table-row-animated${idx === 0 ? " rank-1" : idx === sorted.length - 1 ? " rank-worst" : ""}`}
+                          className={`table-row-animated${idx === 0 && rankedCount > 0 ? " rank-1" : idx === rankedCount - 1 && rankedCount > 1 ? " rank-worst" : ""}`}
                         >
                           <td>
                             <span className={`rank-num${idx === 0 ? " gold" : idx === 1 ? " silver" : idx === 2 ? " bronze" : ""}`}>

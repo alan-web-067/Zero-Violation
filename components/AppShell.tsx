@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import * as Separator from "@radix-ui/react-separator";
-import { LayoutDashboard, Trophy, TrendingUp, FileText, Settings2, Search, Briefcase, Users, UserCheck, Calendar, type LucideIcon } from "lucide-react";
+import { LayoutDashboard, Trophy, TrendingUp, FileText, Settings2, Search, Briefcase, Users, UserCheck, type LucideIcon } from "lucide-react";
 import { AUTH_TOKEN_KEY, ME_KEY, apiClient } from "@/lib/apiClient";
 import AloxChat from "@/components/AloxChat";
 import AloxHelpButton from "@/components/AloxHelpButton";
@@ -41,14 +41,13 @@ const NAV: Array<{
   {
     section: "Tools",
     items: [
-      { href: "/workspace",   label: "My Workspace",   icon: Briefcase,  roles: ["block_manager", "hr", "accounting", "super_admin", "admin"] },
+      { href: "/workspace",   label: "My Workspace",   icon: Briefcase,  roles: ["block_manager", "super_admin", "admin"] },
       // HR/ACCOUNTING MEMBERS FEATURE — Members page for employee registry
-      { href: "/members",     label: "Members",        icon: UserCheck,  roles: ["hr", "accounting", "admin", "super_admin"] },
-      { href: "/events",      label: "Upcoming Events",icon: Calendar,   roles: ["hr"] },
+      { href: "/members",     label: "Members",        icon: UserCheck,  roles: ["admin", "super_admin"] },
       { href: "/admin",       label: "Admin / Edit",   icon: Settings2 },
       { href: "/users",       label: "User Management",icon: Users,      roles: ["super_admin", "admin"] },
       // Company Lookup hidden from HR (no KPI relevance to their workflow)
-      { href: "/lookup",      label: "Company Lookup", icon: Search,     roles: ["admin", "super_admin", "block_manager", "viewer", "accounting"] },
+      { href: "/lookup",      label: "Company Lookup", icon: Search,     roles: ["admin", "super_admin", "block_manager", "viewer"] },
     ],
   },
 ];

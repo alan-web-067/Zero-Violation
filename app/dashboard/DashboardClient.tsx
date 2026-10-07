@@ -13,7 +13,7 @@ import AccountingDashboardClient from "./AccountingDashboardClient";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
 import {
-  applyKpiToRows, sortByKpi, MONTHS, RowWithKpi,
+  applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, MONTHS, RowWithKpi,
 } from "@/lib/kpi";
 import { loadPeriodRows } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
@@ -44,6 +44,7 @@ const STATUS_COLOR: Record<string, string> = {
   Excellent: "#0ea5e9",
   Good:      "#f59e0b",
   Poor:      "#ef4444",
+  "No data": "#94a3b8",
 };
 
 const BADGE_CLASS: Record<string, string> = {
@@ -51,6 +52,7 @@ const BADGE_CLASS: Record<string, string> = {
   Excellent: "badge badge-excellent",
   Good:      "badge badge-good",
   Poor:      "badge badge-poor",
+  "No data": "badge badge-nodata",
 };
 
 const BLOCK_COLORS = [
@@ -183,7 +185,7 @@ export default function DashboardClient() {
           const pt: TrendPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
           const monthHistory: Record<string, string | undefined> = {};
           withKpi.forEach((r) => {
-            pt[r.name] = r.kpi.finalKpi;
+            if (!r.kpi.noData) pt[r.name] = r.kpi.finalKpi;
             if (ENABLE_STREAK_BADGES) monthHistory[r.name] = r.kpi.status;
           });
           return { pt, monthHistory, m };
@@ -205,13 +207,15 @@ export default function DashboardClient() {
     }
   }
 
-  const winner      = sorted[0] ?? null;
-  const worst       = sorted.length > 0 ? sorted[sorted.length - 1] : null;
-  const activeBlocks = sorted.filter((r) => r.trucks > 0 || r.violationPoints > 0).length;
-  const avgKpi      = sorted.length > 0
-    ? Math.round(sorted.reduce((s, r) => s + r.kpi.finalKpi, 0) / sorted.length * 100) / 100
+  // Blocks with no data for the period can't win, lose, or move the average.
+  const ranked      = rankedOnly(sorted);
+  const winner      = ranked[0] ?? null;
+  const worst       = ranked.length > 1 ? ranked[ranked.length - 1] : null;
+  const activeBlocks = ranked.length;
+  const avgKpi      = ranked.length > 0
+    ? Math.round(ranked.reduce((s, r) => s + r.kpi.finalKpi, 0) / ranked.length * 100) / 100
     : 0;
-  const top5 = sorted.slice(0, 5);
+  const top5 = ranked.slice(0, 5);
 
   // =====================================================================
   // PHASE1 FEATURE — derived comparison values (vs. previous period)
@@ -221,15 +225,14 @@ export default function DashboardClient() {
   // or changes how `sorted`/`winner`/`worst`/`avgKpi`/`activeBlocks` above
   // are produced — it only adds extra read-only context alongside them.
   // =====================================================================
+  const prevRanked = rankedOnly(prevSorted);
   function findPrevRow(name: string) {
-    return prevSorted.find((r) => r.name === name) ?? null;
+    return prevRanked.find((r) => r.name === name) ?? null;
   }
-  const prevAvgKpi = prevSorted.length > 0
-    ? Math.round(prevSorted.reduce((s, r) => s + r.kpi.finalKpi, 0) / prevSorted.length * 100) / 100
+  const prevAvgKpi = prevRanked.length > 0
+    ? Math.round(prevRanked.reduce((s, r) => s + r.kpi.finalKpi, 0) / prevRanked.length * 100) / 100
     : null;
-  const prevActiveBlocks = prevSorted.length > 0
-    ? prevSorted.filter((r) => r.trucks > 0 || r.violationPoints > 0).length
-    : null;
+  const prevActiveBlocks = prevSorted.length > 0 ? prevRanked.length : null;
   const prevWinnerRow = winner ? findPrevRow(winner.name) : null;
 
   // "Most Improved" = the block whose Final KPI dropped the most vs. the
@@ -237,7 +240,7 @@ export default function DashboardClient() {
   const mostImproved = (() => {
     if (!ENABLE_MOST_IMPROVED || prevSorted.length === 0) return null;
     let best: { row: RowWithKpi; improvement: number } | null = null;
-    for (const r of sorted) {
+    for (const r of ranked) {
       const prev = findPrevRow(r.name);
       if (!prev) continue;
       const improvement = prev.kpi.finalKpi - r.kpi.finalKpi;
@@ -471,11 +474,18 @@ export default function DashboardClient() {
           <div className="winner-banner">
             <div className="winner-trophy">🏆</div>
             <div className="winner-info">
-              <h3>Block of the Period</h3>
+              <h3>{period.view === "quarter" ? "Team of the Quarter" : "Team of the Month"}</h3>
               <div className="winner-name">{winner.name}</div>
               <div className="winner-kpi">
                 Final KPI: {winner.kpi.finalKpi.toFixed(2)} ·{" "}
                 <span className={BADGE_CLASS[winner.kpi.status]}>{winner.kpi.status}</span>
+                {(() => {
+                  const streak = streakBadge(winner.name);
+                  return streak ? <span className="badge badge-winner" style={{ marginLeft: 6 }}>{streak.emoji} {streak.label}</span> : null;
+                })()}
+              </div>
+              <div className="winner-kpi" style={{ opacity: 0.85, fontSize: 12 }}>
+                Why: {kpiReasons(winner).join(" · ")}
               </div>
             </div>
           </div>
@@ -558,7 +568,7 @@ export default function DashboardClient() {
                 )
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {(["Perfect", "Excellent", "Good", "Poor"] as const).map((s) => {
+                  {(["Perfect", "Excellent", "Good", "Poor", "No data"] as const).map((s) => {
                     const count = sorted.filter((r) => r.kpi.status === s).length;
                     return (
                       <div key={s} style={{ display: "flex", alignItems: "center", gap: 10 }}>

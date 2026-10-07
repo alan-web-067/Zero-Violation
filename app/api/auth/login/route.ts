@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { initDb, get, run } from "@/lib/db";
-import { signToken, nowIso, Role } from "@/lib/auth";
+import { signToken, nowIso, Role, DISABLED_ROLES } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     // RBAC FEATURE — accounts disabled from User Management cannot sign in.
     // Safe to remove: deleting this check lets disabled accounts log in again,
     // matching pre-RBAC behavior (no account could be disabled before).
-    if (user.status === "disabled") {
+    if (user.status === "disabled" || DISABLED_ROLES.includes(user.role)) {
       return NextResponse.json(
         { error: "This account has been disabled. Contact your administrator." },
         { status: 403 }

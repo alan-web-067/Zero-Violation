@@ -11,7 +11,7 @@ import bcrypt from "bcryptjs";
 import { initDb, get, run } from "@/lib/db";
 import { requireAuth, requireAdmin, Role } from "@/lib/auth";
 
-const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "hr", "accounting", "admin", "viewer"];
+const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "admin", "viewer"];
 
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   await initDb();

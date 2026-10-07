@@ -91,7 +91,7 @@ export default function AnalyticsClient() {
             const rows = await loadPeriodRows({ year: y, month: m, quarter: Math.ceil(m / 3), view: "month" }, admin);
             const withKpi = sortByKpi(applyKpiToRows(rows));
             const pt: MonthPoint = { label: MONTHS.find((x) => x.n === m)?.name?.slice(0, 3) ?? `M${m}` };
-            withKpi.forEach((r) => { pt[r.name] = r.kpi.finalKpi; });
+            withKpi.forEach((r) => { if (!r.kpi.noData) pt[r.name] = r.kpi.finalKpi; });
             return pt;
           })
         ),
@@ -100,7 +100,7 @@ export default function AnalyticsClient() {
             const rows = await loadPeriodRows({ year: y, month: (q - 1) * 3 + 1, quarter: q, view: "quarter" }, admin);
             const withKpi = sortByKpi(applyKpiToRows(rows));
             const pt: QuarterPoint = { label: `Q${q}` };
-            withKpi.forEach((r) => { pt[r.name] = r.kpi.finalKpi; });
+            withKpi.forEach((r) => { if (!r.kpi.noData) pt[r.name] = r.kpi.finalKpi; });
             return pt;
           })
         ),
@@ -313,7 +313,6 @@ export default function AnalyticsClient() {
                         const vals = Object.entries(pt)
                           .filter(([k]) => k !== "label")
                           .map(([k, v]) => ({ name: k, kpi: Number(v) }))
-                          .filter((x) => x.kpi > 0)
                           .sort((a, b) => a.kpi - b.kpi);
                         const best = vals[0];
                         const worst = vals[vals.length - 1];

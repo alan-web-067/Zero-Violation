@@ -14,6 +14,10 @@ export type JwtUser = { uid: number; username: string; role: Role };
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 
+// Roles turned off for now — they can't sign in or use existing tokens.
+// Remove a role from this list to bring it back (its code is untouched).
+export const DISABLED_ROLES: Role[] = ["hr", "accounting"];
+
 export function signToken(user: {
   id: number;
   username: string;
@@ -40,6 +44,7 @@ export function requireAuth(req: NextRequest): JwtUser {
     if (!payload?.uid || !payload?.username || !payload?.role) {
       throw new Error("Malformed token");
     }
+    if (DISABLED_ROLES.includes(payload.role)) throw new Error("Role disabled");
     return payload;
   } catch (err) {
     throw new Error("Invalid or expired token");

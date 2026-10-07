@@ -42,7 +42,7 @@ async function all<T = unknown>(sql: string, params: unknown[] = []) {
 // Every serverless cold start used to replay ~25 sequential migration queries
 // against remote Turso before answering. Now a single version check gates them.
 // BUMP THIS whenever you add/alter a table or seed below, so it runs once more.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 let _initPromise: Promise<void> | null = null;
 
@@ -329,13 +329,11 @@ async function migrate() {
   const RBAC_DEMO_USERS: Array<{
     username: string;
     password: string;
-    role: "super_admin" | "block_manager" | "hr" | "accounting";
+    role: "super_admin" | "block_manager";
     assignedBlockName: string | null;
   }> = [
     { username: "superadmin",   password: "SuperAdmin@123",   role: "super_admin",   assignedBlockName: null },
     { username: "blockmanager", password: "BlockManager@123", role: "block_manager", assignedBlockName: "D BLOCK" },
-    { username: "hrmanager",    password: "HrManager@123",    role: "hr",            assignedBlockName: null },
-    { username: "accountant",   password: "Accountant@123",   role: "accounting",    assignedBlockName: null },
   ];
 
   for (const demo of RBAC_DEMO_USERS) {
@@ -358,6 +356,10 @@ async function migrate() {
 
     console.log(`✅ Seeded RBAC demo account: ${demo.username} / ${demo.password} (${demo.role})`);
   }
+
+  // HR / Accounting are turned off for now (see DISABLED_ROLES in lib/auth.ts).
+  // Disable rather than delete so their history stays intact.
+  await run(`UPDATE users SET status = 'disabled' WHERE role IN ('hr', 'accounting')`);
 }
 
 export { run, get, all };

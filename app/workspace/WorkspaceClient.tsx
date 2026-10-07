@@ -27,6 +27,7 @@ const BADGE_CLASS: Record<string, string> = {
   Excellent: "badge badge-excellent",
   Good:      "badge badge-good",
   Poor:      "badge badge-poor",
+  "No data": "badge badge-nodata",
 };
 
 type Me = {
@@ -328,7 +329,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
                       </thead>
                       <tbody>
                         <tr><td>Staff adjustment</td><td className="num">{fmtPct(currentKpi.staffPercent)}</td><td className="num">{fmtPct(projectedKpi.staffPercent)}</td></tr>
-                        <tr><td>Clean −30% applied</td><td className="num">{currentKpi.cleanDelta > 0 ? `−${currentKpi.cleanDelta.toFixed(2)}` : "—"}</td><td className="num">{projectedKpi.cleanDelta > 0 ? `−${projectedKpi.cleanDelta.toFixed(2)}` : "—"}</td></tr>
+                        <tr><td>Clean discount applied</td><td className="num">{currentKpi.cleanDelta > 0 ? `−${currentKpi.cleanDelta.toFixed(2)}` : "—"}</td><td className="num">{projectedKpi.cleanDelta > 0 ? `−${projectedKpi.cleanDelta.toFixed(2)}` : "—"}</td></tr>
                         <tr><td>Final KPI</td><td className="num"><strong>{currentKpi.finalKpi.toFixed(2)}</strong></td><td className="num"><strong>{projectedKpi.finalKpi.toFixed(2)}</strong></td></tr>
                       </tbody>
                     </table>

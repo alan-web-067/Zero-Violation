@@ -12,7 +12,7 @@ import bcrypt from "bcryptjs";
 import { initDb, get, all, run } from "@/lib/db";
 import { requireAuth, requireAdmin, nowIso, Role } from "@/lib/auth";
 
-const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "hr", "accounting", "admin", "viewer"];
+const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "admin", "viewer"];
 
 type UserRow = {
   id: number;

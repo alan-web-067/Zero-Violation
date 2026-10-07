@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
-import { applyKpiToRows, sortByKpi, RowWithKpi } from "@/lib/kpi";
+import { applyKpiToRows, sortByKpi, rankedOnly, kpiReasons, RowWithKpi } from "@/lib/kpi";
 import { loadPeriodRows } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
 import type { Role } from "@/lib/auth";
@@ -15,9 +15,11 @@ const BADGE_CLASS: Record<string, string> = {
   Excellent: "badge badge-excellent",
   Good:      "badge badge-good",
   Poor:      "badge badge-poor",
+  "No data": "badge badge-nodata",
 };
 
 function RankBadge({ rank, total }: { rank: number; total: number }) {
+  if (rank === 0)     return null;
   if (rank === 1)     return <span className="badge badge-winner">🏆 #1 Winner</span>;
   if (rank === total) return <span className="badge badge-worst">⚠️ Needs Work</span>;
   return null;
@@ -35,6 +37,7 @@ export default function LeaderboardClient() {
     view: "month",
   });
   const [sorted,  setSorted]  = useState<RowWithKpi[]>([]);
+  const ranked = rankedOnly(sorted);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -99,27 +102,28 @@ export default function LeaderboardClient() {
         <PeriodSelector period={period} onChange={handlePeriodChange} disabled={loading} />
 
         {/* Winner highlight */}
-        {!loading && sorted.length > 0 && (
+        {!loading && ranked.length > 0 && (
           <div className="winner-banner">
             <div className="winner-trophy">🏆</div>
             <div className="winner-info">
               <h3>Block of the Period</h3>
-              <div className="winner-name">{sorted[0].name}</div>
+              <div className="winner-name">{ranked[0].name}</div>
               <div className="winner-kpi">
-                Final KPI: {sorted[0].kpi.finalKpi.toFixed(2)} ·{" "}
-                <span className={BADGE_CLASS[sorted[0].kpi.status]}>{sorted[0].kpi.status}</span>
+                Final KPI: {ranked[0].kpi.finalKpi.toFixed(2)} ·{" "}
+                <span className={BADGE_CLASS[ranked[0].kpi.status]}>{ranked[0].kpi.status}</span>
               </div>
+              <div className="winner-kpi" style={{ opacity: 0.85, fontSize: 12 }}>{kpiReasons(ranked[0]).join(" · ")}</div>
             </div>
-            {sorted[sorted.length - 1] && (
+            {ranked.length > 1 && (
               <div style={{ marginLeft: "auto", textAlign: "right" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   Needs Improvement
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#7f1d1d" }}>
-                  {sorted[sorted.length - 1].name}
+                  {ranked[ranked.length - 1].name}
                 </div>
                 <div style={{ fontSize: 12, color: "#b91c1c", marginTop: 2 }}>
-                  KPI: {sorted[sorted.length - 1].kpi.finalKpi.toFixed(2)}
+                  KPI: {ranked[ranked.length - 1].kpi.finalKpi.toFixed(2)}
                 </div>
               </div>
             )}
@@ -148,7 +152,7 @@ export default function LeaderboardClient() {
                       <th className="num">KPI Adj. %</th>
                       <th className="num">Clean Ins.</th>
                       <th className="num">Total Ins.</th>
-                      <th className="num">Clean −30%</th>
+                      <th className="num">Clean Adj.</th>
                       <th className="num">Final KPI</th>
                       <th>Status</th>
                       <th></th>
@@ -158,11 +162,11 @@ export default function LeaderboardClient() {
                     {sorted.map((r, idx) => (
                       <tr
                         key={r.id}
-                        className={`table-row-animated${idx === 0 ? " rank-1" : idx === sorted.length - 1 ? " rank-worst" : ""}`}
+                        className={`table-row-animated${idx === 0 && ranked.length > 0 ? " rank-1" : idx === ranked.length - 1 && ranked.length > 1 ? " rank-worst" : ""}`}
                       >
                         <td>
-                          <span className={`rank-num${idx === 0 ? " gold" : idx === 1 ? " silver" : idx === 2 ? " bronze" : ""}`}>
-                            {idx + 1}
+                          <span className={`rank-num${r.kpi.noData ? "" : idx === 0 ? " gold" : idx === 1 ? " silver" : idx === 2 ? " bronze" : ""}`}>
+                            {r.kpi.noData ? "—" : idx + 1}
                           </span>
                         </td>
                         <td><strong>{r.name}</strong></td>
@@ -199,7 +203,7 @@ export default function LeaderboardClient() {
                         {/* Clean inspections */}
                         <td className="num">{r.cleanInspections || "—"}</td>
                         <td className="num">{r.totalInspections || "—"}</td>
-                        {/* Clean −30% reduction */}
+                        {/* Clean discount (scales with clean-inspection rate) */}
                         <td className="num">
                           {r.kpi.cleanDelta > 0
                             ? <span style={{ color: "#16a34a", fontWeight: 700 }}>−{r.kpi.cleanDelta.toFixed(2)}</span>
@@ -208,7 +212,7 @@ export default function LeaderboardClient() {
                         <td className="num"><strong style={{ fontSize: 14 }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>
                         <td><span className={BADGE_CLASS[r.kpi.status]}>{r.kpi.status}</span></td>
                         <td style={{ whiteSpace: "nowrap" }}>
-                          <RankBadge rank={idx + 1} total={sorted.length} />
+                          <RankBadge rank={r.kpi.noData ? 0 : idx + 1} total={ranked.length} />
                         </td>
                       </tr>
                     ))}

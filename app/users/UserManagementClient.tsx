@@ -34,7 +34,7 @@ type UserDTO = {
   assignedBlock: { id: string; name: string } | null;
 };
 
-const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "hr", "accounting", "admin", "viewer"];
+const ASSIGNABLE_ROLES: Role[] = ["super_admin", "block_manager", "admin", "viewer"];
 
 function fmtLastLogin(iso: string | null) {
   if (!iso) return "Never";

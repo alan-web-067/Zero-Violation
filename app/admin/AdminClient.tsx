@@ -6,7 +6,7 @@ import AppShell from "@/components/AppShell";
 import PeriodSelector, { PeriodState } from "@/components/PeriodSelector";
 import { AUTH_TOKEN_KEY, apiClient } from "@/lib/apiClient";
 import {
-  Row, applyKpiToRows, sortByKpi, fmtPct, calcKpi, RowWithKpi,
+  Row, applyKpiToRows, sortByKpi, rankedOnly, fmtPct, calcKpi, RowWithKpi,
 } from "@/lib/kpi";
 import { loadPeriodRows } from "@/lib/useKpiData";
 import { isFullAdmin, roleLabel } from "@/lib/permissions";
@@ -17,6 +17,7 @@ const BADGE_CLASS: Record<string, string> = {
   Excellent: "badge badge-excellent",
   Good:      "badge badge-good",
   Poor:      "badge badge-poor",
+  "No data": "badge badge-nodata",
 };
 
 export default function AdminClient() {
@@ -41,6 +42,7 @@ export default function AdminClient() {
 
   const activeRows  = draftRows ?? baseRows;
   const displayRows = editMode ? activeRows : sortByKpi(applyKpiToRows(activeRows));
+  const rankedCount = editMode ? 0 : rankedOnly(displayRows as RowWithKpi[]).length;
 
   // Total Inspections can never be lower than Clean Inspections (a clean
   // inspection is a subset of total inspections) — block saving until fixed.
@@ -273,7 +275,7 @@ export default function AdminClient() {
                       <th className="num">Viol. Points</th>
                       <th className="num">Staff Adj.</th>
                       <th className="num">Staff %</th>
-                      <th className="num">Clean −30%</th>
+                      <th className="num">Clean Adj.</th>
                       <th className="num">Final KPI</th>
                       <th>Status</th>
                     </tr>
@@ -287,7 +289,7 @@ export default function AdminClient() {
                       return (
                         <tr
                           key={r.id}
-                          className={`table-row-animated${!editMode && idx === 0 ? " rank-1" : !editMode && idx === displayRows.length - 1 ? " rank-worst" : ""}`}
+                          className={`table-row-animated${idx === 0 && rankedCount > 0 ? " rank-1" : idx === rankedCount - 1 && rankedCount > 1 ? " rank-worst" : ""}`}
                         >
                           {!editMode && (
                             <td>

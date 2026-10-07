@@ -15,7 +15,8 @@ export type Row = {
 
 export type KpiResult = {
   violPoint: number;
-  cleanPercent: number;
+  cleanRate: number;      // clean ÷ total inspections (0–1)
+  cleanPercent: number;   // discount applied to violation points (0–0.30)
   cleanDelta: number;
   afterClean: number;
   expectedTrucks: number;
@@ -24,6 +25,7 @@ export type KpiResult = {
   staffDelta: number;
   finalKpi: number;
   status: string;
+  noData: boolean;        // nothing entered for the period — excluded from ranking
 };
 
 export type RowWithKpi = Row & { kpi: KpiResult };
@@ -66,11 +68,14 @@ export function clamp(n: number, min: number, max: number) {
 }
 
 // Standard target: 40 trucks per employee.
-// Staff Performance % = (actual - expected) / expected × 100
-// KPI Adjustment    % = −staffPerformance%
-//   Over target  (+diff%) → KPI decreases (negative adjustment = reward)
-//   Under target (−diff%) → KPI increases (positive adjustment = penalty)
-// No fixed buckets — the adjustment is fully proportional to real performance.
+// Violation points are scaled by workload so busy and quiet teams compete fairly:
+//   workload factor = expected trucks ÷ actual trucks (capped to 0.5–2)
+//   2× the target → violations count half;  half the target → violations count double.
+// staffPercent = factor − 1  (negative = reward, positive = penalty).
+export const TRUCKS_PER_MEMBER = 40;
+const WORKLOAD_FACTOR_MIN = 0.5;
+const WORKLOAD_FACTOR_MAX = 2;
+
 export function getStaffDetails(
   teamMembers: number,
   trucksChecked: number,
@@ -79,14 +84,12 @@ export function getStaffDetails(
   const actual = Number(trucksChecked || 0);
   if (!team) return { expectedTrucks: 0, diffPercent: 0, staffPercent: 0 };
 
-  const expectedTrucks = team * 40;
-  const diffPercent = actual
-    ? round2(((actual - expectedTrucks) / expectedTrucks) * 100)
-    : 0;
+  const expectedTrucks = team * TRUCKS_PER_MEMBER;
+  if (!actual) return { expectedTrucks, diffPercent: 0, staffPercent: 0 };
 
-  // staffPercent is the KPI multiplier applied to violationPoints.
-  // Inverted: overperformance (positive diff) reduces KPI; underperformance raises it.
-  const staffPercent = actual ? round2(-diffPercent / 100) : 0;
+  const diffPercent = round2(((actual - expectedTrucks) / expectedTrucks) * 100);
+  const factor = clamp(expectedTrucks / actual, WORKLOAD_FACTOR_MIN, WORKLOAD_FACTOR_MAX);
+  const staffPercent = round2(factor - 1);
 
   return { expectedTrucks, diffPercent, staffPercent };
 }
@@ -94,6 +97,8 @@ export function getStaffDetails(
 export function getStaffPercent(teamMembers: number, trucksChecked: number): number {
   return getStaffDetails(teamMembers, trucksChecked).staffPercent;
 }
+
+const MAX_CLEAN_DISCOUNT = 0.30;
 
 export function calcKpi(row: Row): KpiResult {
   const periodMonths = Number(row.periodMonths || 1);
@@ -104,8 +109,12 @@ export function calcKpi(row: Row): KpiResult {
   const goodMax = periodMonths * 8.9;
 
   const violPoint = Number(row.violationPoints || 0);
+  const cleanIns = Number(row.cleanInspections || 0);
+  const totalIns = Number(row.totalInspections || 0);
 
-  const cleanPercent = violPoint > 0 ? 0.30 : 0;
+  // Clean discount scales with the real clean-inspection rate: 100% clean → −30%.
+  const cleanRate = totalIns > 0 ? clamp(cleanIns / totalIns, 0, 1) : 0;
+  const cleanPercent = violPoint > 0 ? round2(MAX_CLEAN_DISCOUNT * cleanRate) : 0;
   const cleanDelta = violPoint * cleanPercent;
   const afterClean = violPoint - cleanDelta;
 
@@ -114,18 +123,23 @@ export function calcKpi(row: Row): KpiResult {
     Number(row.trucks || 0),
   );
 
-  const staffDelta = violPoint * staffPercent;
+  const staffDelta = afterClean * staffPercent;
   const finalKpiRaw = afterClean + staffDelta;
   const finalKpi = round2(clamp(finalKpiRaw, 0, maxKpi));
 
+  // Nothing entered yet — don't let an empty block rank as "Perfect".
+  const noData = violPoint === 0 && totalIns === 0 && cleanIns === 0;
+
   let status = "Poor";
 
-  if (finalKpi <= perfectMax) status = "Perfect";
+  if (noData) status = "No data";
+  else if (finalKpi <= perfectMax) status = "Perfect";
   else if (finalKpi <= excellentMax) status = "Excellent";
   else if (finalKpi <= goodMax) status = "Good";
 
   return {
     violPoint: round2(violPoint),
+    cleanRate: round2(cleanRate),
     cleanPercent,
     cleanDelta: round2(cleanDelta),
     afterClean: round2(afterClean),
@@ -135,6 +149,7 @@ export function calcKpi(row: Row): KpiResult {
     staffDelta: round2(staffDelta),
     finalKpi,
     status,
+    noData,
   };
 }
 
@@ -212,6 +227,33 @@ export function applyKpiToRows(rows: Row[]): RowWithKpi[] {
   return rows.map((r) => ({ ...r, kpi: calcKpi(r) }));
 }
 
+function trucksPerMember(r: Row): number {
+  return r.teamMembers > 0 ? Number(r.trucks || 0) / r.teamMembers : 0;
+}
+
+// Best first: lowest Final KPI. Ties → higher clean rate → more trucks per member.
+// Blocks with no data always sort last.
 export function sortByKpi(rows: RowWithKpi[]): RowWithKpi[] {
-  return [...rows].sort((a, b) => a.kpi.finalKpi - b.kpi.finalKpi);
+  return [...rows].sort((a, b) =>
+    Number(a.kpi.noData) - Number(b.kpi.noData) ||
+    a.kpi.finalKpi - b.kpi.finalKpi ||
+    b.kpi.cleanRate - a.kpi.cleanRate ||
+    trucksPerMember(b) - trucksPerMember(a) ||
+    a.name.localeCompare(b.name)
+  );
+}
+
+// Only blocks with data for the period — use for winner / worst / averages.
+export function rankedOnly(rows: RowWithKpi[]): RowWithKpi[] {
+  return rows.filter((r) => !r.kpi.noData);
+}
+
+// Short human-readable reasons a block is ranked where it is.
+export function kpiReasons(r: RowWithKpi): string[] {
+  const out = [`${r.kpi.violPoint} violation point${r.kpi.violPoint === 1 ? "" : "s"}`];
+  if (r.totalInspections > 0) out.push(`${Math.round(r.kpi.cleanRate * 100)}% clean inspections`);
+  if (r.teamMembers > 0 && r.trucks > 0) {
+    out.push(`${Math.round(trucksPerMember(r))} trucks/member (target ${TRUCKS_PER_MEMBER})`);
+  }
+  return out;
 }

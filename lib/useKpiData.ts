@@ -11,6 +11,7 @@ import {
   mergeWithBase,
   monthsForQuarter,
   sortByKpi,
+  rankedOnly,
 } from "@/lib/kpi";
 
 export type { Row, RowWithKpi, BlockDef };
@@ -111,12 +112,13 @@ export function useKpiData(isAdmin: boolean) {
   );
 
   const sorted: RowWithKpi[] = sortByKpi(applyKpiToRows(rows));
-  const winner = sorted[0] ?? null;
-  const worst = sorted.length > 0 ? sorted[sorted.length - 1] : null;
-  const activeBlocks = sorted.filter((r) => r.violationPoints > 0 || r.trucks > 0).length;
+  const ranked = rankedOnly(sorted);
+  const winner = ranked[0] ?? null;
+  const worst = ranked.length > 1 ? ranked[ranked.length - 1] : null;
+  const activeBlocks = ranked.length;
   const avgKpi =
-    sorted.length > 0
-      ? Math.round((sorted.reduce((s, r) => s + r.kpi.finalKpi, 0) / sorted.length) * 100) / 100
+    ranked.length > 0
+      ? Math.round((ranked.reduce((s, r) => s + r.kpi.finalKpi, 0) / ranked.length) * 100) / 100
       : 0;
 
   return { rows, setRows, sorted, winner, worst, activeBlocks, avgKpi, loading, load };

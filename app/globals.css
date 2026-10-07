@@ -772,6 +772,7 @@ html, body {
 .badge-excellent { background: #e0f2fe; color: #0c4a6e; border: 1px solid rgba(12,74,110,0.12); }
 .badge-good      { background: #fef9c3; color: #854d0e; border: 1px solid rgba(133,77,14,0.12); }
 .badge-poor      { background: #fee2e2; color: #991b1b; border: 1px solid rgba(153,27,27,0.12); }
+.badge-nodata    { background: #f1f5f9; color: #64748b; border: 1px solid rgba(100,116,139,0.15); }
 .badge-inactive  { background: #f1f5f9; color: #64748b; border: 1px solid rgba(100,116,139,0.18); }
 
 .badge-winner {
@@ -3191,6 +3192,7 @@ table.data-table tbody tr.rank-1 {
 [data-theme="dark"] .badge-excellent { background: rgba(56,189,248,0.16);  color: #93dbfb; border-color: rgba(147,219,251,0.22); }
 [data-theme="dark"] .badge-good      { background: rgba(250,204,21,0.16);  color: #fde047; border-color: rgba(253,224,71,0.22); }
 [data-theme="dark"] .badge-poor      { background: rgba(248,113,113,0.16); color: #fca5a5; border-color: rgba(252,165,165,0.22); }
+[data-theme="dark"] .badge-nodata    { background: rgba(148,163,184,0.12); color: #94a3b8; border-color: rgba(148,163,184,0.2); }
 [data-theme="dark"] .badge-inactive  { background: rgba(148,163,184,0.14); color: #cbd5e1; border-color: rgba(148,163,184,0.22); }
 [data-theme="dark"] .badge-winner    { background: linear-gradient(135deg, #92702a, #b45309); color: #fef3c7; }
 [data-theme="dark"] .badge-worst     { background: rgba(248,113,113,0.16); color: #fca5a5; }
