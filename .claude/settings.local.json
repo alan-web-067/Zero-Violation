@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(Get-Process -Name node -ErrorAction SilentlyContinue)",
-      "PowerShell(Get-CimInstance Win32_Process -Filter \"ProcessId=23712 or ProcessId=23836 or ProcessId=25908 or ProcessId=26464\")"
-    ]
-  }
-}

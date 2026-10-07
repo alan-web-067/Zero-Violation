@@ -32,3 +32,9 @@ npm-debug.log*
 
 # Uploaded files (dev only — production uses Vercel Blob)
 public/uploads/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Local Claude Code settings
+.claude/
