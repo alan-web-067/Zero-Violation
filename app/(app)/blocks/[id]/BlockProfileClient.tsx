@@ -13,6 +13,7 @@ import { AUTH_TOKEN_KEY, getMe } from "@/lib/apiClient";
 import { applyKpiToRows, sortByKpi, rankedOnly, MONTHS, Row, RowWithKpi, BlockDef } from "@/lib/kpi";
 import { fetchBlockDefs, loadYearMonthRows } from "@/lib/useKpiData";
 import { isFullAdmin } from "@/lib/permissions";
+import { rankYear, blockBadges } from "@/lib/awards";
 import type { Role } from "@/lib/auth";
 
 const BADGE_CLASS: Record<string, string> = {
@@ -81,6 +82,7 @@ export default function BlockProfileClient() {
   const results = useMemo(() => (months ? monthResults(months, id) : []), [months, id]);
   const compare = useMemo(() => (months && compareId ? monthResults(months, compareId) : []), [months, compareId]);
   const compareName = defs.find((d) => d.id === compareId)?.name ?? "";
+  const badges = useMemo(() => (months ? blockBadges(rankYear(months), id) : []), [months, id]);
 
   // Only months that already happened (or have data) count toward the summary.
   const withData = results.filter((r) => r.row && !r.row.kpi.noData);
@@ -150,6 +152,29 @@ export default function BlockProfileClient() {
             <div className="stat-sub">lower is better</div>
           </div>
         </div>
+
+        {!loading && (
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div className="card-header">
+              <h2 className="card-title">🎖️ Achievements {year}</h2>
+              <Link href="/hall-of-fame" style={{ fontSize: 12, fontWeight: 600 }}>Hall of Fame →</Link>
+            </div>
+            <div className="card-body">
+              {badges.length ? (
+                <div className="badge-shelf">
+                  {badges.map((b) => (
+                    <div key={b.label} className="achievement" title={b.detail}>
+                      <span className="achievement-icon">{b.icon}</span>
+                      <span><strong>{b.label}</strong><small>{b.detail}</small></span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ fontSize: 13, color: "var(--text-muted)" }}>No achievements yet this year — finish #1, have a Perfect month or a 100% clean month to earn one.</div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="card" style={{ marginBottom: 14 }}>
           <div className="card-header">

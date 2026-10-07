@@ -178,6 +178,31 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
     },
   },
   {
+    match: "/hall-of-fame",
+    help: {
+      title: "Hall of Fame",
+      intro: "The year's champions and awards, worked out from the monthly rankings.",
+      sections: [
+        {
+          heading: "Team of the Year",
+          body: "The block with the best average monthly rank, among blocks ranked in at least half the months. Ties go to more #1 finishes. During the current year it shows the leader so far.",
+        },
+        {
+          heading: "Awards",
+          list: [
+            "👑 Most #1 finishes and 🔥 longest winning streak.",
+            "📈 Most improved — biggest drop in Final KPI from the first 3 months to the last 3.",
+            "💎 Most Perfect months, 🔍 most inspections and ✨ highest clean rate (at least 50 inspections).",
+          ],
+        },
+        {
+          heading: "Monthly champions",
+          body: "The #1 block of every month. Click any block name to open its profile and achievements.",
+        },
+      ],
+    },
+  },
+  {
     match: "/scoring",
     help: {
       title: "How Scoring Works",
@@ -245,7 +270,7 @@ const DEFAULT_HELP: PageHelp = {
   sections: [
     {
       heading: "Getting around",
-      body: "Use the sidebar to jump between Dashboard, Leaderboard, Analytics, Reports, How Scoring Works, My Workspace, Admin / Edit and User Management. Open this help panel from any page for guidance on what you're looking at.",
+      body: "Use the sidebar to jump between Dashboard, Leaderboard, Analytics, Reports, Hall of Fame, How Scoring Works, My Workspace, Admin / Edit and User Management. Open this help panel from any page for guidance on what you're looking at.",
     },
   ],
 };

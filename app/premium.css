@@ -298,3 +298,34 @@ table.data-table td.num { font-weight: 600; }
 /* Block names link to the block profile page */
 a.block-link { color: inherit; text-decoration: none; border-bottom: 1px dashed transparent; transition: color .15s, border-color .15s; }
 a.block-link:hover { color: var(--emerald-600, #047857); border-bottom-color: currentColor; }
+
+/* ---------- Hall of Fame ---------- */
+.hof-hero { margin-bottom: 16px; }
+.hof-hero .block-link { color: inherit; }
+.hof-awards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+@media (max-width: 1000px) { .hof-awards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px)  { .hof-awards { grid-template-columns: 1fr; } }
+.hof-award { padding: 18px 18px 16px; text-align: center; position: relative; overflow: hidden; transition: transform .2s ease, box-shadow .2s ease; }
+.hof-award::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: linear-gradient(90deg, var(--gold-300, #f2d68b), #d4a017, var(--gold-300, #f2d68b)); }
+.hof-award:hover { transform: translateY(-3px); box-shadow: var(--premium-shadow-hover); }
+.hof-award-icon { font-size: 30px; line-height: 1; margin-bottom: 8px; }
+.hof-award-title { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); }
+.hof-award-winner { display: inline-block; margin-top: 6px; font-size: 17px; font-weight: 800; }
+.hof-award-value { margin-top: 2px; font-size: 13px; font-weight: 700; color: #a16207; }
+.hof-award-why { margin-top: 8px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
+.hof-months { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.hof-month { border: 1px solid var(--border); border-radius: 12px; padding: 12px 10px; text-align: center; background: linear-gradient(180deg, #fffdf6, #fff); }
+.hof-month.empty { background: var(--gray-50, #f8fafc); opacity: .7; }
+.hof-month-name { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--text-muted); }
+.hof-month-trophy { font-size: 22px; margin: 4px 0 2px; }
+.hof-month-winner { display: block; font-weight: 800; font-size: 13.5px; }
+.hof-month-kpi { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+[data-theme="dark"] .hof-month { background: rgba(255,255,255,.03); }
+
+/* ---------- Achievement badges (block profile) ---------- */
+.badge-shelf { display: flex; flex-wrap: wrap; gap: 10px; }
+.achievement { display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 10px; border-radius: 999px; border: 1px solid rgba(212, 160, 23, .35); background: linear-gradient(180deg, #fffaf0, #fff6dc); }
+.achievement-icon { font-size: 20px; line-height: 1; }
+.achievement strong { display: block; font-size: 13px; }
+.achievement small { display: block; font-size: 11px; color: var(--text-muted); }
+[data-theme="dark"] .achievement { background: rgba(212, 160, 23, .1); }
