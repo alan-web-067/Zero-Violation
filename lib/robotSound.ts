@@ -42,7 +42,7 @@ function tone(ac: AudioContext, type: OscillatorType, from: number, to: number, 
   osc.stop(start + dur + 0.02);
 }
 
-export function playRobotHit(level: number) {
+export function playRobotHit(level: number, text: string) {
   if (!robotSoundEnabled()) return;
   const ac = audio();
   if (!ac) return;
@@ -62,7 +62,7 @@ export function playRobotHit(level: number) {
 
   // Robot reply: Alox says it out loud (browser voice). Falls back to beeps where speech isn't available.
   const grumpy = Math.min(level, 6);
-  if (!speak(grumpy)) {
+  if (!speak(text, grumpy)) {
     const base = 880 - grumpy * 90;
     const wave: OscillatorType = grumpy >= 4 ? "sawtooth" : "square";
     tone(ac, wave, base, base * 0.92, t + 0.2, 0.11, 0.07);
@@ -70,21 +70,21 @@ export function playRobotHit(level: number) {
   }
 }
 
-// Gets grumpier with every hit (index = how many times Alox was hit before).
-const LINES = [
-  "Ouch! Don't hit me!",
-  "Hey! Don't hit me!",
-  "Ow! That hurts! Don't hit me!",
-  "Stop it! Don't hit me!",
-  "I said, don't hit me!",
-  "Don't. Hit. Me.",
-  "Robot abuse detected! Don't hit me!",
-];
+// Drop the leading emoji and spell out short forms so the voice reads the bubble naturally.
+function speakable(text: string): string {
+  return text
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .replace(/\.{3}/g, ", ")
+    .replace(/\bKPI\b/g, "K.P.I.")
+    .trim();
+}
 
-function speak(level: number): boolean {
+function speak(text: string, level: number): boolean {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return false;
   const synth = window.speechSynthesis;
-  const say = new SpeechSynthesisUtterance(LINES[level] ?? LINES[LINES.length - 1]);
+  const line = speakable(text);
+  if (!line) return false;
+  const say = new SpeechSynthesisUtterance(line);
   // High, quick and cute at first; lower and slower as Alox gets angry.
   say.pitch = Math.max(0.4, 1.8 - level * 0.22);
   say.rate = Math.max(0.85, 1.15 - level * 0.05);

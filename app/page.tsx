@@ -98,10 +98,10 @@ export default function LoginPage() {
   }, []);
 
   function handleRobotHit() {
-    playRobotHit(hitCount);
     stopNormalRotation();
     if (hitTimerRef.current) { clearTimeout(hitTimerRef.current); hitTimerRef.current = null; }
     const hit = HIT_MESSAGES[hitCount % HIT_MESSAGES.length];
+    playRobotHit(hitCount, hit.text);   // Alox says exactly what the bubble shows
     setHitCount((c) => c + 1);
     setRobotMode("hit");
     setRobotMsg(hit.text);
