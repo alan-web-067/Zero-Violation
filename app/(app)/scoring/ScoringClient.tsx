@@ -43,8 +43,8 @@ function RuleTable({ n, title, note, head, rows }: {
   rows: React.ReactNode[][];
 }) {
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontWeight: 800, marginBottom: 2 }}>{n}. {title}</div>
+    <div style={{ marginTop: 18, marginBottom: 4 }}>
+      <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2 }}>{n}. {title}</div>
       {note && <div style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 6 }}>{note}</div>}
       <div className="table-wrap" style={{ border: "1px solid var(--border)", borderRadius: 10 }}>
         <table className="data-table">

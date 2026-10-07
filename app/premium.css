@@ -284,3 +284,13 @@ table.data-table td { padding-left: 10px; padding-right: 10px; }
   box-shadow: 0 0 0 1px rgba(242, 214, 139, 0.55), 0 24px 50px -20px rgba(0, 0, 0, 0.55), 0 0 70px 4px rgba(230, 190, 90, 0.16);
 }
 .ll-root .ll-glow-wrap { margin: 34px 0 30px; }
+
+/* Numbers use the site font with aligned digits (the old Courier fallback
+   made "%" and "−" look broken). */
+table.data-table td.num,
+.cell-input {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+table.data-table td.num { font-weight: 600; }
