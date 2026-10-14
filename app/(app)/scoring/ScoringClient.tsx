@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  Row, calcKpi, TRUCKS_PER_MEMBER, MIN_INSPECTIONS_FOR_DISCOUNT,
+  Row, calcKpi, TRUCKS_PER_MEMBER, CLEAN_DISCOUNT_PER_INSPECTION,
 } from "@/lib/kpi";
 
 const FIELDS: Array<[keyof Row, string]> = [
@@ -26,7 +26,7 @@ const BADGE_CLASS: Record<string, string> = {
 
 // Examples for the rule tables — values come from calcKpi(), so they always match the real scoring.
 const EXAMPLE_BASE: Row = { id: "ex", name: "ex", teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 10 };
-const INSPECTION_EXAMPLES = [40, 50, 100, 200, 300, 500];
+const CLEAN_EXAMPLES = [10, 40, 90, 120, 200];
 const WORKLOAD_EXAMPLES = [300, 250, 235, 200, 165, 150, 100];
 
 function pct(p: number) {
@@ -94,26 +94,26 @@ export default function ScoringClient() {
             <div className="card-body" style={{ fontSize: 13, lineHeight: 1.7 }}>
               <p style={{ marginTop: 0 }}>
                 <strong>Lower Final KPI = better.</strong> Each month starts from the block&apos;s violation points,
-                then two discounts and a workload adjustment are applied.
+                then the clean inspection discount and the workload adjustment are applied.
               </p>
 
               <RuleTable
                 n={1}
-                title="Clean discount — 30% for every block with clean inspections"
-                text={<>Every block gets <strong>30% off</strong> its violation points for its clean inspections, no matter how many clean inspections it has. Blocks that inspect more get extra reward from the inspection discount below.</>}
+                title={`Clean inspection discount — ${CLEAN_DISCOUNT_PER_INSPECTION * 100}% for every clean inspection`}
+                text={<>
+                  Every clean inspection takes <strong>{CLEAN_DISCOUNT_PER_INSPECTION * 100}%</strong> off the violation points:
+                  {" "}<strong>clean inspections × {CLEAN_DISCOUNT_PER_INSPECTION * 100}% = discount</strong>. More clean inspections = bigger discount.
+                  {" "}At most 100%. Quarters use the monthly average.
+                </>}
+                head={["Clean inspections", ...CLEAN_EXAMPLES.map(String)]}
+                rows={[
+                  ["Discount", ...CLEAN_EXAMPLES.map((n) => pct(calcKpi({ ...EXAMPLE_BASE, cleanInspections: n, totalInspections: n }).cleanPercent))],
+                  ["10 points become", ...CLEAN_EXAMPLES.map((n) => calcKpi({ ...EXAMPLE_BASE, cleanInspections: n, totalInspections: n }).afterClean.toFixed(2))],
+                ]}
               />
 
               <RuleTable
                 n={2}
-                title={`Inspection discount — from ${MIN_INSPECTIONS_FOR_DISCOUNT} inspections, 1% for every 10`}
-                note="No upper limit. Quarters use the monthly average."
-                head={["Total inspections", ...INSPECTION_EXAMPLES.map((n) => (n < MIN_INSPECTIONS_FOR_DISCOUNT ? `Under ${MIN_INSPECTIONS_FOR_DISCOUNT}` : String(n)))]}
-                rows={[["Discount", ...INSPECTION_EXAMPLES.map((n) =>
-                  pct(calcKpi({ ...EXAMPLE_BASE, totalInspections: n }).inspectionPercent))]]}
-              />
-
-              <RuleTable
-                n={3}
                 title={`Workload — target is ${TRUCKS_PER_MEMBER} trucks per team member`}
                 text={<>
                   Each person must check <strong>{TRUCKS_PER_MEMBER} trucks</strong>. A team of 5 must check <strong>{5 * TRUCKS_PER_MEMBER} trucks</strong> (5 × {TRUCKS_PER_MEMBER}).<br />
@@ -143,7 +143,7 @@ export default function ScoringClient() {
               />
 
               <RuleTable
-                n={4}
+                n={3}
                 title="Status"
                 note="Quarters combine 3 months, so the limits are ×3."
                 head={["Final KPI (month)", "Status"]}
@@ -157,8 +157,8 @@ export default function ScoringClient() {
               />
 
               <p style={{ marginBottom: 0 }}>
-                <strong>Example:</strong> 10 violation points, 200 inspections, 180 clean → clean inspections (−30%) + 200 inspections (−20%)
-                = −50% → <strong>5 points</strong>, then the workload adjustment gives the Final KPI.
+                <strong>Example:</strong> 10 violation points and 90 clean inspections → 90 × 0.5% = −45% → <strong>5.50 points</strong>,
+                then the workload adjustment gives the Final KPI.
                 When two blocks tie, the higher clean rate wins, then more inspections, then more trucks per member.
               </p>
             </div>
@@ -185,9 +185,8 @@ export default function ScoringClient() {
                 <table className="data-table">
                   <tbody>
                     <tr><td>Violation points</td><td className="num">{kpi.violPoint.toFixed(2)}</td></tr>
-                    <tr><td>Clean discount ({Math.round(kpi.cleanPercent * 100)}%)</td><td className="num">−{kpi.cleanDelta.toFixed(2)}</td></tr>
-                    <tr><td>Inspection discount ({Math.round(kpi.inspectionPercent * 100)}%)</td><td className="num">−{kpi.inspectionDelta.toFixed(2)}</td></tr>
-                    <tr><td>After discounts</td><td className="num">{kpi.afterClean.toFixed(2)}</td></tr>
+                    <tr><td>Clean inspection discount ({row.cleanInspections} × {CLEAN_DISCOUNT_PER_INSPECTION * 100}% = {Math.round(kpi.cleanPercent * 1000) / 10}%)</td><td className="num">−{kpi.cleanDelta.toFixed(2)}</td></tr>
+                    <tr><td>After discount</td><td className="num">{kpi.afterClean.toFixed(2)}</td></tr>
                     {/* Same wording as the workload table: trucks · difference · % → points change */}
                     <tr>
                       <td>

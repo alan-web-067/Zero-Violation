@@ -491,7 +491,7 @@ export default function AdminClient() {
                           </td>
                           <td className="num">
                             {(kpi.cleanDelta + kpi.inspectionDelta) > 0
-                            ? <span title={`Clean −${kpi.cleanDelta.toFixed(2)} · Inspections −${kpi.inspectionDelta.toFixed(2)}`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(kpi.cleanDelta + kpi.inspectionDelta).toFixed(2)}</span>
+                            ? <span title={`Clean inspections: ${Math.round(kpi.cleanPercent * 1000) / 10}% off`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(kpi.cleanDelta + kpi.inspectionDelta).toFixed(2)}</span>
                             : "—"}
                           </td>
                           <td className="num">

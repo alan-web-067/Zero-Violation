@@ -381,14 +381,14 @@ export default function ReportsClient() {
     const header = [
       "Rank","Block","Team Members","Trucks Checked","Clean Inspections",
       "Total Inspections","Violation Points","Staff Adj.","Staff %",
-      "Clean Adj.","Inspection Bonus","After Clean","Final KPI","Status",
+      "Clean Discount","After Discount","Final KPI","Status",
     ];
     lines.push(csvRow(header));
     sorted.forEach((r, idx) => {
       lines.push(csvRow([
         r.kpi.noData ? "—" : idx + 1, r.name, r.teamMembers, r.trucks, r.cleanInspections,
         r.totalInspections, r.kpi.violPoint, r.kpi.staffDelta, fmtPct(r.kpi.staffPercent),
-        r.kpi.cleanDelta, r.kpi.inspectionDelta, r.kpi.afterClean, r.kpi.finalKpi, r.kpi.status,
+        r.kpi.cleanDelta, r.kpi.afterClean, r.kpi.finalKpi, r.kpi.status,
       ]));
     });
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
@@ -544,7 +544,7 @@ export default function ReportsClient() {
                           </td>
                           <td className="num">
                             {(r.kpi.cleanDelta + r.kpi.inspectionDelta) > 0
-                            ? <span title={`Clean −${r.kpi.cleanDelta.toFixed(2)} · Inspections −${r.kpi.inspectionDelta.toFixed(2)}`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(r.kpi.cleanDelta + r.kpi.inspectionDelta).toFixed(2)}</span>
+                            ? <span title={`Clean inspections: ${Math.round(r.kpi.cleanPercent * 1000) / 10}% off`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(r.kpi.cleanDelta + r.kpi.inspectionDelta).toFixed(2)}</span>
                             : "—"}
                           </td>
                           <td className="num">{r.kpi.afterClean.toFixed(2)}</td>

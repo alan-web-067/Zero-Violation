@@ -51,7 +51,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
         },
         {
           heading: "How KPI performance is understood",
-          body: "A lower Final KPI means better performance. It starts from violation points, then takes off a clean discount (30% for any block with clean inspections) and an inspection discount (from 50 inspections, 1% per 10), and finally scales by workload (trucks checked vs. 40 per team member). Blocks with nothing entered show \"No data\" and are not ranked. A rising KPI is a signal to take a closer look at that block.",
+          body: "A lower Final KPI means better performance. It starts from violation points, then takes off the clean inspection discount (0.5% for every clean inspection), and finally adds or takes off points for workload (trucks checked vs. 40 per team member). Blocks with nothing entered show \"No data\" and are not ranked. A rising KPI is a signal to take a closer look at that block.",
         },
       ],
     },
@@ -77,7 +77,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
             "Total Inspections — every inspection performed in the period (clean plus those with violations).",
             "Violation Points — the total points accumulated from violations recorded during inspections.",
             "Staff Adj. / Staff % — the workload adjustment in points: target = team members × 40; difference ÷ target = a percentage, and every 10% = 1 point — taken off for extra trucks, added for missing trucks (35 extra of 200 = 17.5% = −1.75 points). Green means the team checked more than its target.",
-            "Discounts — clean discount (30% for any block with clean inspections) plus inspection discount (from 50 inspections, 1% per 10). Hover the number for the breakdown.",
+            "Discounts — the clean inspection discount: 0.5% off the points for every clean inspection (90 clean = 45%). Hover the number for the percent.",
             "Final KPI — the computed compliance score for the period; lower is better.",
             "Status — Perfect (≤ 2), Excellent (≤ 6), Good (≤ 8), Poor (above 8, no upper limit), or No data when nothing was entered (per month; ×3 for quarters).",
           ],
@@ -218,7 +218,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
       sections: [
         {
           heading: "The rules",
-          body: "Each month starts from the block's violation points. Clean discount: 30% off for any block with clean inspections. Inspection discount: from 50 inspections, 1% off per 10 inspections. Then the workload adjustment compares trucks checked with 40 per team member. Lower Final KPI = better.",
+          body: "Each month starts from the block's violation points. Clean inspection discount: 0.5% off for every clean inspection (90 clean = 45%). Then the workload adjustment adds or takes off points for trucks checked vs. 40 per team member. Lower Final KPI = better.",
         },
         {
           heading: "Try it",

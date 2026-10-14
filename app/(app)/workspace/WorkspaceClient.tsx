@@ -357,8 +357,7 @@ function BlockManagerPanel({ me }: { me: Me }) {
                       </thead>
                       <tbody>
                         <tr><td>Staff adjustment</td><td className="num">{fmtPct(currentKpi.staffPercent)}</td><td className="num">{fmtPct(projectedKpi.staffPercent)}</td></tr>
-                        <tr><td>Clean discount applied</td><td className="num">{currentKpi.cleanDelta > 0 ? `−${currentKpi.cleanDelta.toFixed(2)}` : "—"}</td><td className="num">{projectedKpi.cleanDelta > 0 ? `−${projectedKpi.cleanDelta.toFixed(2)}` : "—"}</td></tr>
-                        <tr><td>Inspection bonus</td><td className="num">{currentKpi.inspectionDelta > 0 ? `−${currentKpi.inspectionDelta.toFixed(2)}` : "—"}</td><td className="num">{projectedKpi.inspectionDelta > 0 ? `−${projectedKpi.inspectionDelta.toFixed(2)}` : "—"}</td></tr>
+                        <tr><td>Clean inspection discount</td><td className="num">{currentKpi.cleanDelta > 0 ? `−${currentKpi.cleanDelta.toFixed(2)}` : "—"}</td><td className="num">{projectedKpi.cleanDelta > 0 ? `−${projectedKpi.cleanDelta.toFixed(2)}` : "—"}</td></tr>
                         <tr><td>Final KPI</td><td className="num"><strong>{currentKpi.finalKpi.toFixed(2)}</strong></td><td className="num"><strong>{projectedKpi.finalKpi.toFixed(2)}</strong></td></tr>
                       </tbody>
                     </table>

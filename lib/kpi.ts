@@ -18,9 +18,9 @@ export type KpiResult = {
   cleanRate: number;      // clean ÷ total inspections (0–1)
   cleanPercent: number;   // discount applied to violation points (0–0.30)
   cleanDelta: number;
-  inspectionPercent: number; // inspection-volume discount (1% per 10 inspections, from 50)
+  inspectionPercent: number; // always 0 — folded into the clean inspection discount
   inspectionDelta: number;
-  afterClean: number;        // violation points after clean + inspection discounts
+  afterClean: number;        // violation points after the clean inspection discount
   expectedTrucks: number;
   diffPercent: number;
   staffPercent: number;
@@ -101,18 +101,9 @@ export function getStaffPercent(teamMembers: number, trucksChecked: number): num
   return getStaffDetails(teamMembers, trucksChecked).staffPercent;
 }
 
-const MAX_CLEAN_DISCOUNT = 0.30;
-
-// More inspections → bigger % off the violation points. No discount below the
-// minimum; above it, 1% per 10 inspections with no upper limit (50 → 5%, 300 → 30%).
-// Clean + inspection discounts together are capped at 100% so points never go negative.
-export const MIN_INSPECTIONS_FOR_DISCOUNT = 50;
-export const INSPECTION_DISCOUNT_PER_INSPECTION = 0.001;
-
-function inspectionDiscount(totalIns: number): number {
-  if (totalIns < MIN_INSPECTIONS_FOR_DISCOUNT) return 0;
-  return round2(totalIns * INSPECTION_DISCOUNT_PER_INSPECTION);
-}
+// One combined discount: every CLEAN inspection takes 0.5% off the violation points
+// (90 clean → 45%). Quarters use the monthly average. At most 100%, so points never go negative.
+export const CLEAN_DISCOUNT_PER_INSPECTION = 0.005;
 
 export function calcKpi(row: Row): KpiResult {
   const periodMonths = Number(row.periodMonths || 1);
@@ -127,16 +118,15 @@ export function calcKpi(row: Row): KpiResult {
   const cleanIns = Number(row.cleanInspections || 0);
   const totalIns = Number(row.totalInspections || 0);
 
-  // Clean discount: a flat −30% for any block with clean inspections. More inspections
-  // are rewarded separately by the inspection discount.
+  // Clean inspection discount: 0.5% per clean inspection (monthly average for quarters), max 100%.
   const cleanRate = totalIns > 0 ? clamp(cleanIns / totalIns, 0, 1) : 0;
-  const cleanPercent = violPoint > 0 ? (cleanIns > 0 ? MAX_CLEAN_DISCOUNT : 0) : 0;
-  const cleanDelta = violPoint * cleanPercent;
-  // Quarter rows sum 3 months of inspections — use the monthly average.
-  const inspectionPercent = violPoint > 0
-    ? Math.min(inspectionDiscount(totalIns / periodMonths), 1 - cleanPercent)
+  const cleanPercent = violPoint > 0
+    ? Math.min(1, Math.round((cleanIns / periodMonths) * CLEAN_DISCOUNT_PER_INSPECTION * 10000) / 10000)
     : 0;
-  const inspectionDelta = violPoint * inspectionPercent;
+  const cleanDelta = violPoint * cleanPercent;
+  // The separate inspection-volume discount was folded into the clean discount (kept at 0 for old screens).
+  const inspectionPercent = 0;
+  const inspectionDelta = 0;
   const afterClean = violPoint - cleanDelta - inspectionDelta;
 
   const noData = violPoint === 0 && totalIns === 0 && cleanIns === 0;

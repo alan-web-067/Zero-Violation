@@ -214,7 +214,7 @@ export default function LeaderboardClient() {
                         {/* Clean-rate + inspection-volume discounts (hover for breakdown) */}
                         <td className="num">
                           {(r.kpi.cleanDelta + r.kpi.inspectionDelta) > 0
-                            ? <span title={`Clean −${r.kpi.cleanDelta.toFixed(2)} · Inspections −${r.kpi.inspectionDelta.toFixed(2)}`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(r.kpi.cleanDelta + r.kpi.inspectionDelta).toFixed(2)}</span>
+                            ? <span title={`Clean inspections: ${Math.round(r.kpi.cleanPercent * 1000) / 10}% off`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(r.kpi.cleanDelta + r.kpi.inspectionDelta).toFixed(2)}</span>
                             : "—"}
                         </td>
                         <td className="num"><strong style={{ fontSize: 14, color: r.kpi.status === "Poor" ? "#dc2626" : undefined }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>
