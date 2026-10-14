@@ -46,7 +46,7 @@ function RuleTable({ n, title, note, text, head, rows }: {
     <div style={{ marginTop: 18, marginBottom: 4 }}>
       <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 2 }}>{n}. {title}</div>
       {note && <div style={{ color: "var(--text-muted)", fontSize: 12, marginBottom: 6 }}>{note}</div>}
-      {text && <p style={{ margin: "4px 0 0" }}>{text}</p>}
+      {text && <div style={{ margin: "4px 0 8px" }}>{text}</div>}
       {head && rows && <div className="table-wrap" style={{ border: "1px solid var(--border)", borderRadius: 10 }}>
         <table className="data-table">
           <thead>
@@ -116,13 +116,15 @@ export default function ScoringClient() {
                 n={3}
                 title={`Workload — target is ${TRUCKS_PER_MEMBER} trucks per team member`}
                 text={<>
-                  <strong>1.</strong> Target = team members × {TRUCKS_PER_MEMBER}.<br />
-                  <strong>2.</strong> Difference = trucks checked − target.<br />
-                  <strong>3.</strong> <strong>Points change = difference ÷ target × 10</strong> (every 10% away from the target = 1 point).<br />
-                  More trucks than the target → those points are <strong style={{ color: "#047857" }}>taken off</strong>;
-                  {" "}fewer trucks → those points are <strong style={{ color: "#dc2626" }}>added</strong>.
-                  {" "}<strong>Every block gets the same number of points</strong> for the same trucks — it does not depend on the block&apos;s violation points. The Final KPI never goes below 0.<br />
-                  <span style={{ color: "var(--text-muted)", fontSize: 12 }}>Examples below: a team of 5, so the target is {5 * TRUCKS_PER_MEMBER} trucks.</span>
+                  Each person must check <strong>{TRUCKS_PER_MEMBER} trucks</strong>. A team of 5 must check <strong>{5 * TRUCKS_PER_MEMBER} trucks</strong> (5 × {TRUCKS_PER_MEMBER}).<br />
+                  To find the change: <strong>take the extra or missing trucks, divide by the target, then multiply by 10.</strong>
+                  <ul className="workload-steps">
+                    <li><strong>Checked 235:</strong> 35 extra → 35 ÷ 200 × 10 = <strong style={{ color: "#047857" }}>1.75 points off</strong></li>
+                    <li><strong>Checked 200:</strong> no extra, no missing → <strong>no change</strong></li>
+                    <li><strong>Checked 165:</strong> 35 missing → 35 ÷ 200 × 10 = <strong style={{ color: "#dc2626" }}>1.75 points added</strong></li>
+                  </ul>
+                  <strong>More trucks = fewer points (good). Fewer trucks = more points (bad).</strong>
+                  {" "}Every block gets the same change for the same trucks.
                 </>}
                 head={["Trucks checked", "Difference", "%", "Points change"]}
                 rows={WORKLOAD_EXAMPLES.map((t) => {
