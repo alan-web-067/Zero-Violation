@@ -217,7 +217,7 @@ export default function LeaderboardClient() {
                             ? <span title={`Clean −${r.kpi.cleanDelta.toFixed(2)} · Inspections −${r.kpi.inspectionDelta.toFixed(2)}`} style={{ color: "#16a34a", fontWeight: 700 }}>−{(r.kpi.cleanDelta + r.kpi.inspectionDelta).toFixed(2)}</span>
                             : "—"}
                         </td>
-                        <td className="num"><strong style={{ fontSize: 14 }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>
+                        <td className="num"><strong style={{ fontSize: 14, color: r.kpi.status === "Poor" ? "#dc2626" : undefined }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>
                         {Object.values(goals).some((g) => g !== null) && <td><GoalChip row={r} target={goals[r.id]} /></td>}
                         <td><span className={BADGE_CLASS[r.kpi.status]}>{r.kpi.status}</span></td>
                         <td style={{ whiteSpace: "nowrap" }}>

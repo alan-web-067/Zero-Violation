@@ -117,10 +117,11 @@ function inspectionDiscount(totalIns: number): number {
 export function calcKpi(row: Row): KpiResult {
   const periodMonths = Number(row.periodMonths || 1);
 
-  const maxKpi = periodMonths * 10;
+  // Status limits per month (×3 for quarters). There is no upper cap on the Final KPI,
+  // so a weak month shows its real number instead of stopping at 10.
   const perfectMax = periodMonths * 2;
   const excellentMax = periodMonths * 6;
-  const goodMax = periodMonths * 8.9;
+  const goodMax = periodMonths * 8;
 
   const violPoint = Number(row.violationPoints || 0);
   const cleanIns = Number(row.cleanInspections || 0);
@@ -147,7 +148,7 @@ export function calcKpi(row: Row): KpiResult {
 
   const staffDelta = afterClean * staffPercent;
   const finalKpiRaw = afterClean + staffDelta;
-  const finalKpi = round2(clamp(finalKpiRaw, 0, maxKpi));
+  const finalKpi = round2(Math.max(0, finalKpiRaw));
 
   // Nothing entered yet (noData) — don't let an empty block rank as "Perfect".
   let status = "Poor";

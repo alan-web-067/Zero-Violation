@@ -213,7 +213,7 @@ export default function AnalyticsClient() {
                     <LineChart data={monthlyData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
-                      <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                      <YAxis domain={[0, (max: number) => Math.max(10, Math.ceil(max))]} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
                       <ReferenceLine y={6} stroke="#0ea5e9" strokeDasharray="4 4" label={{ value: "Excellent", position: "right", fontSize: 10, fill: "#0ea5e9" }} />
                       <Tooltip
                         contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--border)" }}
@@ -252,7 +252,7 @@ export default function AnalyticsClient() {
                       <BarChart data={quarterlyData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="label" tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
-                        <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                        <YAxis domain={[0, (max: number) => Math.max(10, Math.ceil(max))]} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
                         <Tooltip
                           contentStyle={{ fontSize: 12, borderRadius: 8 }}
                           formatter={(v: unknown) => [typeof v === "number" ? v.toFixed(2) : String(v ?? ""), ""]}
@@ -288,7 +288,7 @@ export default function AnalyticsClient() {
                       >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--text-muted)" }} />
-                        <YAxis domain={[0, 10]} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
+                        <YAxis domain={[0, (max: number) => Math.max(10, Math.ceil(max))]} tick={{ fontSize: 11, fill: "var(--text-muted)" }} />
                         <Tooltip
                           contentStyle={{ fontSize: 12, borderRadius: 8 }}
                           formatter={(v: unknown) => [typeof v === "number" ? v.toFixed(2) : String(v ?? ""), "KPI"]}

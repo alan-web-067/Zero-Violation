@@ -131,8 +131,8 @@ export default function ScoringClient() {
                 rows={[
                   ["0 – 2", <span key="p" className={BADGE_CLASS.Perfect}>Perfect</span>],
                   ["2 – 6", <span key="e" className={BADGE_CLASS.Excellent}>Excellent</span>],
-                  ["6 – 8.9", <span key="g" className={BADGE_CLASS.Good}>Good</span>],
-                  ["above 8.9", <span key="b" className={BADGE_CLASS.Poor}>Poor</span>],
+                  ["6 – 8", <span key="g" className={BADGE_CLASS.Good}>Good</span>],
+                  ["above 8 (no upper limit)", <span key="b" className={BADGE_CLASS.Poor}>Poor</span>],
                   ["nothing entered", <span key="n" className={BADGE_CLASS["No data"]}>No data</span>],
                 ]}
               />
@@ -176,7 +176,7 @@ export default function ScoringClient() {
                     <tr>
                       <td><strong>Final KPI</strong></td>
                       <td className="num">
-                        <strong style={{ fontSize: 15 }}>{kpi.finalKpi.toFixed(2)}</strong>{" "}
+                        <strong style={{ fontSize: 15, color: kpi.status === "Poor" ? "#dc2626" : undefined }}>{kpi.finalKpi.toFixed(2)}</strong>{" "}
                         <span className={BADGE_CLASS[kpi.status]}>{kpi.status}</span>
                       </td>
                     </tr>

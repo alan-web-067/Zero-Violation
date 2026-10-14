@@ -495,7 +495,7 @@ export default function AdminClient() {
                             : "—"}
                           </td>
                           <td className="num">
-                            <strong style={{ fontSize: 14 }}>{kpi.finalKpi.toFixed(2)}</strong>
+                            <strong style={{ fontSize: 14, color: kpi.status === "Poor" ? "#dc2626" : undefined }}>{kpi.finalKpi.toFixed(2)}</strong>
                           </td>
                           <td>
                             <span className={BADGE_CLASS[kpi.status]}>{kpi.status}</span>

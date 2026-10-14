@@ -103,7 +103,7 @@ function explainScore() {
     "2. Clean discount: a flat 30% off for any block with clean inspections (30 of 40 and 100 of 100 both get −30%).",
     `3. Inspection discount: from ${MIN_INSPECTIONS_FOR_DISCOUNT} inspections, 1% off per 10 inspections (100 = −10%, 300 = −30%). Quarters use the monthly average.`,
     `4. Workload: violations are scaled by expected ÷ actual trucks (target ${TRUCKS_PER_MEMBER} per team member), between ×0.5 and ×2.`,
-    "5. Status: Perfect ≤ 2, Excellent ≤ 6, Good ≤ 8.9, otherwise Poor (per month).",
+    "5. Status: Perfect ≤ 2, Excellent ≤ 6, Good ≤ 8, Poor above 8 (per month). There is no upper limit on the Final KPI.",
     "Blocks with nothing entered show \"No data\" and are not ranked. Ties go to the higher clean rate, then more inspections, then more trucks per member.",
   ].join("\n");
 }

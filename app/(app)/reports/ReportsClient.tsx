@@ -548,7 +548,7 @@ export default function ReportsClient() {
                             : "—"}
                           </td>
                           <td className="num">{r.kpi.afterClean.toFixed(2)}</td>
-                          <td className="num"><strong style={{ fontSize: 14 }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>
+                          <td className="num"><strong style={{ fontSize: 14, color: r.kpi.status === "Poor" ? "#dc2626" : undefined }}>{r.kpi.finalKpi.toFixed(2)}</strong></td>
                           <td><span className={BADGE_CLASS[r.kpi.status]}>{r.kpi.status}</span></td>
                           {isAdmin && (
                             <td style={{ textAlign: "right" }}>

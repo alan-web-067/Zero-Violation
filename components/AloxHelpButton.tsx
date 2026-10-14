@@ -79,7 +79,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
             "Staff Adj. / Staff % — the workload adjustment: expected trucks (40 per team member) ÷ trucks actually checked, between ×0.5 and ×2. Green means the team checked more than its target.",
             "Discounts — clean discount (30% for any block with clean inspections) plus inspection discount (from 50 inspections, 1% per 10). Hover the number for the breakdown.",
             "Final KPI — the computed compliance score for the period; lower is better.",
-            "Status — Perfect (≤ 2), Excellent (≤ 6), Good (≤ 8.9), Poor, or No data when nothing was entered (per month; ×3 for quarters).",
+            "Status — Perfect (≤ 2), Excellent (≤ 6), Good (≤ 8), Poor (above 8, no upper limit), or No data when nothing was entered (per month; ×3 for quarters).",
           ],
         },
         {
