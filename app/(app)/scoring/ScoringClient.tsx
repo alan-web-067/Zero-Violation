@@ -118,11 +118,10 @@ export default function ScoringClient() {
                 text={<>
                   <strong>1.</strong> Target = team members × {TRUCKS_PER_MEMBER}.<br />
                   <strong>2.</strong> Difference = trucks checked − target.<br />
-                  <strong>3.</strong> Percentage = difference ÷ target × 100.<br />
-                  <strong>4.</strong> Every <strong>10%</strong> = <strong>1 point</strong>.
-                  {" "}More trucks than the target → those points are <strong style={{ color: "#047857" }}>taken off</strong>;
+                  <strong>3.</strong> <strong>Points change = difference ÷ target × 10</strong> (every 10% away from the target = 1 point).<br />
+                  More trucks than the target → those points are <strong style={{ color: "#047857" }}>taken off</strong>;
                   {" "}fewer trucks → those points are <strong style={{ color: "#dc2626" }}>added</strong>.
-                  {" "}Every block gets the same change for the same trucks, whatever its violation points. The Final KPI never goes below 0.<br />
+                  {" "}<strong>Every block gets the same number of points</strong> for the same trucks — it does not depend on the block&apos;s violation points. The Final KPI never goes below 0.<br />
                   <span style={{ color: "var(--text-muted)", fontSize: 12 }}>Examples below: a team of 5, so the target is {5 * TRUCKS_PER_MEMBER} trucks.</span>
                 </>}
                 head={["Trucks checked", "Difference", "%", "Points change"]}
