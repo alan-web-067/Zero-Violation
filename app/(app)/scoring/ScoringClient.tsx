@@ -27,7 +27,7 @@ const BADGE_CLASS: Record<string, string> = {
 // Examples for the rule tables — values come from calcKpi(), so they always match the real scoring.
 const EXAMPLE_BASE: Row = { id: "ex", name: "ex", teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 10 };
 const INSPECTION_EXAMPLES = [40, 50, 100, 200, 300, 500];
-const WORKLOAD_EXAMPLES = [300, 260, 250, 200, 150, 100];
+const WORKLOAD_EXAMPLES = [381, 300, 237, 200, 163, 100];
 
 function pct(p: number) {
   const v = Math.round(p * 100);
@@ -115,16 +115,19 @@ export default function ScoringClient() {
               <RuleTable
                 n={3}
                 title={`Workload — target is ${TRUCKS_PER_MEMBER} trucks per team member`}
-                note={`Example: 5 members → ${5 * TRUCKS_PER_MEMBER} expected trucks. The percent of trucks missing is added to the points; the percent of extra trucks is taken off — the same size both ways.`}
-                head={["Trucks checked", "vs. target", "Points change"]}
+                note={`Worked out automatically for any number of trucks: extra trucks ÷ target = the percent taken off the points; missing trucks ÷ target = the percent added. Examples below: a team of 5 (target ${5 * TRUCKS_PER_MEMBER} trucks) with 10 points.`}
+                head={["Trucks checked", "vs. target", "Points change", "10 points become"]}
                 rows={WORKLOAD_EXAMPLES.map((t) => {
                   const k = calcKpi({ ...EXAMPLE_BASE, teamMembers: 5, trucks: t });
-                  const diff = t - 5 * TRUCKS_PER_MEMBER;
-                  const p = Math.round(k.staffPercent * 100);
+                  const target = 5 * TRUCKS_PER_MEMBER;
+                  const diff = t - target;
+                  const pctText = `${Math.round((Math.abs(diff) / target) * 1000) / 10}%`;
+                  const color = k.staffDelta < 0 ? "#047857" : k.staffDelta > 0 ? "#dc2626" : undefined;
                   return [
                     String(t),
-                    diff === 0 ? "on target" : `${Math.abs(diff)} ${diff > 0 ? "extra" : "missing"} (${Math.round(Math.abs(diff) / (5 * TRUCKS_PER_MEMBER) * 100)}%)`,
-                    <span key="c" style={{ color: p < 0 ? "#047857" : p > 0 ? "#dc2626" : undefined }}>{p === 0 ? "no change" : `${p > 0 ? "+" : "−"}${Math.abs(p)}%`}</span>,
+                    <span key="d" style={{ whiteSpace: "nowrap" }}>{diff === 0 ? "on target" : `${Math.abs(diff)} ${diff > 0 ? "extra" : "missing"} = ${pctText}`}</span>,
+                    <span key="c" style={{ color }}>{diff === 0 ? "no change" : `${k.staffDelta > 0 ? "+" : "−"}${Math.abs(k.staffDelta).toFixed(2)} pts`}</span>,
+                    <strong key="r" style={{ color }}>{k.finalKpi.toFixed(2)}</strong>,
                   ];
                 })}
               />
