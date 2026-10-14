@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  Row, calcKpi, fmtPct, TRUCKS_PER_MEMBER, MAX_WORKLOAD_REWARD, MIN_INSPECTIONS_FOR_DISCOUNT,
+  Row, calcKpi, fmtPct, TRUCKS_PER_MEMBER, MIN_INSPECTIONS_FOR_DISCOUNT,
 } from "@/lib/kpi";
 
 const FIELDS: Array<[keyof Row, string]> = [
@@ -115,7 +115,7 @@ export default function ScoringClient() {
               <RuleTable
                 n={3}
                 title={`Workload — target is ${TRUCKS_PER_MEMBER} trucks per team member`}
-                note={`Example: 5 members → ${5 * TRUCKS_PER_MEMBER} expected trucks. Missing trucks: that percent is added to the points. Extra trucks: that percent is taken off, at most −${Math.round(MAX_WORKLOAD_REWARD * 100)}%.`}
+                note={`Example: 5 members → ${5 * TRUCKS_PER_MEMBER} expected trucks. The percent of trucks missing is added to the points; the percent of extra trucks is taken off — the same size both ways.`}
                 head={["Trucks checked", "vs. target", "Points change"]}
                 rows={WORKLOAD_EXAMPLES.map((t) => {
                   const k = calcKpi({ ...EXAMPLE_BASE, teamMembers: 5, trucks: t });

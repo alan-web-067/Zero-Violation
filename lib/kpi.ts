@@ -73,11 +73,11 @@ export function clamp(n: number, min: number, max: number) {
 // Standard target: 40 trucks per team member.
 // Workload adjustment = how far the team is from its target, in percent:
 //   missing trucks → that % is ADDED to the points   (10 of 40 missing = +25%, up to +100%)
-//   extra trucks   → that % is TAKEN OFF the points   (10 over 40 = −25%, at most −30%)
+//   extra trucks   → that % is TAKEN OFF the points   (10 over 40 = −25%, up to −100%)
+// The same distance from the target gives the same size of change in both directions.
 // staffPercent: negative = reward, positive = penalty.
 export const TRUCKS_PER_MEMBER = 40;
-export const MAX_WORKLOAD_REWARD = 0.30;
-const MAX_WORKLOAD_PENALTY = 1;
+const MAX_WORKLOAD_CHANGE = 1;
 
 export function getStaffDetails(
   teamMembers: number,
@@ -91,7 +91,7 @@ export function getStaffDetails(
   if (!actual) return { expectedTrucks, diffPercent: 0, staffPercent: 0 };
 
   const diffPercent = round2(((actual - expectedTrucks) / expectedTrucks) * 100);
-  const staffPercent = round2(clamp((expectedTrucks - actual) / expectedTrucks, -MAX_WORKLOAD_REWARD, MAX_WORKLOAD_PENALTY));
+  const staffPercent = round2(clamp((expectedTrucks - actual) / expectedTrucks, -MAX_WORKLOAD_CHANGE, MAX_WORKLOAD_CHANGE));
 
   return { expectedTrucks, diffPercent, staffPercent };
 }
