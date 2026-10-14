@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  Row, calcKpi, fmtPct, TRUCKS_PER_MEMBER, MIN_INSPECTIONS_FOR_DISCOUNT,
+  Row, calcKpi, TRUCKS_PER_MEMBER, MIN_INSPECTIONS_FOR_DISCOUNT,
 } from "@/lib/kpi";
 
 const FIELDS: Array<[keyof Row, string]> = [
@@ -27,7 +27,7 @@ const BADGE_CLASS: Record<string, string> = {
 // Examples for the rule tables — values come from calcKpi(), so they always match the real scoring.
 const EXAMPLE_BASE: Row = { id: "ex", name: "ex", teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 10 };
 const INSPECTION_EXAMPLES = [40, 50, 100, 200, 300, 500];
-const WORKLOAD_EXAMPLES = [381, 300, 237, 200, 163, 100];
+const WORKLOAD_EXAMPLES = [300, 250, 235, 200, 165, 150, 100];
 
 function pct(p: number) {
   const v = Math.round(p * 100);
@@ -115,8 +115,17 @@ export default function ScoringClient() {
               <RuleTable
                 n={3}
                 title={`Workload — target is ${TRUCKS_PER_MEMBER} trucks per team member`}
-                note={`Worked out automatically for any number of trucks: extra trucks ÷ target = the percent taken off the points; missing trucks ÷ target = the percent added. Examples below: a team of 5 (target ${5 * TRUCKS_PER_MEMBER} trucks) with 10 points.`}
-                head={["Trucks checked", "vs. target", "Points change", "10 points become"]}
+                text={<>
+                  <strong>1.</strong> Target = team members × {TRUCKS_PER_MEMBER}.<br />
+                  <strong>2.</strong> Difference = trucks checked − target.<br />
+                  <strong>3.</strong> Percentage = difference ÷ target × 100.<br />
+                  <strong>4.</strong> Every <strong>10%</strong> = <strong>1 point</strong>.
+                  {" "}More trucks than the target → those points are <strong style={{ color: "#047857" }}>taken off</strong>;
+                  {" "}fewer trucks → those points are <strong style={{ color: "#dc2626" }}>added</strong>.
+                  {" "}Every block gets the same change for the same trucks, whatever its violation points. The Final KPI never goes below 0.<br />
+                  <span style={{ color: "var(--text-muted)", fontSize: 12 }}>Examples below: a team of 5, so the target is {5 * TRUCKS_PER_MEMBER} trucks.</span>
+                </>}
+                head={["Trucks checked", "Difference", "%", "Points change"]}
                 rows={WORKLOAD_EXAMPLES.map((t) => {
                   const k = calcKpi({ ...EXAMPLE_BASE, teamMembers: 5, trucks: t });
                   const target = 5 * TRUCKS_PER_MEMBER;
@@ -125,9 +134,9 @@ export default function ScoringClient() {
                   const color = k.staffDelta < 0 ? "#047857" : k.staffDelta > 0 ? "#dc2626" : undefined;
                   return [
                     String(t),
-                    <span key="d" style={{ whiteSpace: "nowrap" }}>{diff === 0 ? "on target" : `${Math.abs(diff)} ${diff > 0 ? "extra" : "missing"} = ${pctText}`}</span>,
-                    <span key="c" style={{ color }}>{diff === 0 ? "no change" : `${k.staffDelta > 0 ? "+" : "−"}${Math.abs(k.staffDelta).toFixed(2)} pts`}</span>,
-                    <strong key="r" style={{ color }}>{k.finalKpi.toFixed(2)}</strong>,
+                    <span key="d" style={{ whiteSpace: "nowrap" }}>{diff === 0 ? "on target" : `${Math.abs(diff)} ${diff > 0 ? "extra" : "missing"}`}</span>,
+                    diff === 0 ? "0%" : pctText,
+                    <strong key="c" style={{ color }}>{diff === 0 ? "no change" : `${k.staffDelta > 0 ? "+" : "−"}${Math.abs(k.staffDelta).toFixed(2)} pts`}</strong>,
                   ];
                 })}
               />
@@ -180,7 +189,11 @@ export default function ScoringClient() {
                     <tr><td>After discounts</td><td className="num">{kpi.afterClean.toFixed(2)}</td></tr>
                     <tr>
                       <td>Workload ({kpi.expectedTrucks ? `${row.trucks} of ${kpi.expectedTrucks} expected trucks` : "no team size"})</td>
-                      <td className="num">{fmtPct(kpi.staffPercent)} ({kpi.staffDelta >= 0 ? "+" : ""}{kpi.staffDelta.toFixed(2)})</td>
+                      <td className="num">
+                        {kpi.expectedTrucks && row.trucks !== kpi.expectedTrucks
+                          ? `${Math.abs(row.trucks - kpi.expectedTrucks)} ${row.trucks > kpi.expectedTrucks ? "extra" : "missing"} = ${Math.round(Math.abs(kpi.staffPercent) * 1000) / 10}% → ${kpi.staffDelta > 0 ? "+" : "−"}${Math.abs(kpi.staffDelta).toFixed(2)}`
+                          : "no change"}
+                      </td>
                     </tr>
                     <tr>
                       <td><strong>Final KPI</strong></td>
