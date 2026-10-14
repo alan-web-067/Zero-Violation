@@ -76,7 +76,7 @@ const PAGE_HELP: Array<{ match: string; help: PageHelp; roleHelp?: Partial<Recor
             "Clean Inspections — inspections completed with no violations found.",
             "Total Inspections — every inspection performed in the period (clean plus those with violations).",
             "Violation Points — the total points accumulated from violations recorded during inspections.",
-            "Staff Adj. / Staff % — the workload adjustment: expected trucks (40 per team member) ÷ trucks actually checked, between ×0.5 and ×2. Green means the team checked more than its target.",
+            "Staff Adj. / Staff % — the workload adjustment against the target of 40 trucks per team member: missing trucks add that percent to the points (10 of 40 missing = +25%), extra trucks take that percent off (at most −30%). Green means the team checked more than its target.",
             "Discounts — clean discount (30% for any block with clean inspections) plus inspection discount (from 50 inspections, 1% per 10). Hover the number for the breakdown.",
             "Final KPI — the computed compliance score for the period; lower is better.",
             "Status — Perfect (≤ 2), Excellent (≤ 6), Good (≤ 8), Poor (above 8, no upper limit), or No data when nothing was entered (per month; ×3 for quarters).",

@@ -70,14 +70,14 @@ export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-// Standard target: 40 trucks per employee.
-// Violation points are scaled by workload so busy and quiet teams compete fairly:
-//   workload factor = expected trucks ÷ actual trucks (capped to 0.5–2)
-//   2× the target → violations count half;  half the target → violations count double.
-// staffPercent = factor − 1  (negative = reward, positive = penalty).
+// Standard target: 40 trucks per team member.
+// Workload adjustment = how far the team is from its target, in percent:
+//   missing trucks → that % is ADDED to the points   (10 of 40 missing = +25%, up to +100%)
+//   extra trucks   → that % is TAKEN OFF the points   (10 over 40 = −25%, at most −30%)
+// staffPercent: negative = reward, positive = penalty.
 export const TRUCKS_PER_MEMBER = 40;
-const WORKLOAD_FACTOR_MIN = 0.5;
-const WORKLOAD_FACTOR_MAX = 2;
+export const MAX_WORKLOAD_REWARD = 0.30;
+const MAX_WORKLOAD_PENALTY = 1;
 
 export function getStaffDetails(
   teamMembers: number,
@@ -91,8 +91,7 @@ export function getStaffDetails(
   if (!actual) return { expectedTrucks, diffPercent: 0, staffPercent: 0 };
 
   const diffPercent = round2(((actual - expectedTrucks) / expectedTrucks) * 100);
-  const factor = clamp(expectedTrucks / actual, WORKLOAD_FACTOR_MIN, WORKLOAD_FACTOR_MAX);
-  const staffPercent = round2(factor - 1);
+  const staffPercent = round2(clamp((expectedTrucks - actual) / expectedTrucks, -MAX_WORKLOAD_REWARD, MAX_WORKLOAD_PENALTY));
 
   return { expectedTrucks, diffPercent, staffPercent };
 }

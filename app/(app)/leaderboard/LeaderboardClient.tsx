@@ -195,7 +195,7 @@ export default function LeaderboardClient() {
                             </span>
                           ) : "—"}
                         </td>
-                        {/* Workload adjustment: expected ÷ actual trucks − 1 (negative = checked more than target) */}
+                        {/* Workload adjustment: % of trucks missing (+) or extra (−, at most −30%) vs. the target */}
                         <td className="num">
                           {r.kpi.expectedTrucks ? (
                             <span style={{

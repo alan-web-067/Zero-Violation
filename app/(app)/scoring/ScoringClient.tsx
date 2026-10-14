@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  Row, calcKpi, fmtPct, TRUCKS_PER_MEMBER, MIN_INSPECTIONS_FOR_DISCOUNT,
+  Row, calcKpi, fmtPct, TRUCKS_PER_MEMBER, MAX_WORKLOAD_REWARD, MIN_INSPECTIONS_FOR_DISCOUNT,
 } from "@/lib/kpi";
 
 const FIELDS: Array<[keyof Row, string]> = [
@@ -27,7 +27,7 @@ const BADGE_CLASS: Record<string, string> = {
 // Examples for the rule tables — values come from calcKpi(), so they always match the real scoring.
 const EXAMPLE_BASE: Row = { id: "ex", name: "ex", teamMembers: 0, trucks: 0, cleanInspections: 0, totalInspections: 0, violationPoints: 10 };
 const INSPECTION_EXAMPLES = [40, 50, 100, 200, 300, 500];
-const WORKLOAD_EXAMPLES = [400, 300, 200, 150, 100];
+const WORKLOAD_EXAMPLES = [300, 260, 250, 200, 150, 100];
 
 function pct(p: number) {
   const v = Math.round(p * 100);
@@ -115,11 +115,17 @@ export default function ScoringClient() {
               <RuleTable
                 n={3}
                 title={`Workload — target is ${TRUCKS_PER_MEMBER} trucks per team member`}
-                note={`Example: 5 members → ${5 * TRUCKS_PER_MEMBER} expected trucks. Points are multiplied by expected ÷ actual (between ×0.5 and ×2).`}
-                head={["Trucks checked", "vs. target", "Points ×"]}
+                note={`Example: 5 members → ${5 * TRUCKS_PER_MEMBER} expected trucks. Missing trucks: that percent is added to the points. Extra trucks: that percent is taken off, at most −${Math.round(MAX_WORKLOAD_REWARD * 100)}%.`}
+                head={["Trucks checked", "vs. target", "Points change"]}
                 rows={WORKLOAD_EXAMPLES.map((t) => {
                   const k = calcKpi({ ...EXAMPLE_BASE, teamMembers: 5, trucks: t });
-                  return [String(t), `${Math.round((t / (5 * TRUCKS_PER_MEMBER)) * 100)}%`, `×${(1 + k.staffPercent).toFixed(2)}`];
+                  const diff = t - 5 * TRUCKS_PER_MEMBER;
+                  const p = Math.round(k.staffPercent * 100);
+                  return [
+                    String(t),
+                    diff === 0 ? "on target" : `${Math.abs(diff)} ${diff > 0 ? "extra" : "missing"} (${Math.round(Math.abs(diff) / (5 * TRUCKS_PER_MEMBER) * 100)}%)`,
+                    <span key="c" style={{ color: p < 0 ? "#047857" : p > 0 ? "#dc2626" : undefined }}>{p === 0 ? "no change" : `${p > 0 ? "+" : "−"}${Math.abs(p)}%`}</span>,
+                  ];
                 })}
               />
 
