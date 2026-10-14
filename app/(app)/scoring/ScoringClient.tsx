@@ -187,12 +187,22 @@ export default function ScoringClient() {
                     <tr><td>Clean discount ({Math.round(kpi.cleanPercent * 100)}%)</td><td className="num">−{kpi.cleanDelta.toFixed(2)}</td></tr>
                     <tr><td>Inspection discount ({Math.round(kpi.inspectionPercent * 100)}%)</td><td className="num">−{kpi.inspectionDelta.toFixed(2)}</td></tr>
                     <tr><td>After discounts</td><td className="num">{kpi.afterClean.toFixed(2)}</td></tr>
+                    {/* Same wording as the workload table: trucks · difference · % → points change */}
                     <tr>
-                      <td>Workload ({kpi.expectedTrucks ? `${row.trucks} of ${kpi.expectedTrucks} expected trucks` : "no team size"})</td>
+                      <td>
+                        Workload: {row.trucks} trucks, target {kpi.expectedTrucks || "—"}
+                        {kpi.expectedTrucks > 0 && row.trucks !== kpi.expectedTrucks && (
+                          <span style={{ color: "var(--text-muted)" }}>
+                            {" "}· {Math.abs(row.trucks - kpi.expectedTrucks)} {row.trucks > kpi.expectedTrucks ? "extra" : "missing"} · {Math.round(Math.abs(kpi.staffPercent) * 1000) / 10}%
+                          </span>
+                        )}
+                      </td>
                       <td className="num">
-                        {kpi.expectedTrucks && row.trucks !== kpi.expectedTrucks
-                          ? `${Math.abs(row.trucks - kpi.expectedTrucks)} ${row.trucks > kpi.expectedTrucks ? "extra" : "missing"} = ${Math.round(Math.abs(kpi.staffPercent) * 1000) / 10}% → ${kpi.staffDelta > 0 ? "+" : "−"}${Math.abs(kpi.staffDelta).toFixed(2)}`
-                          : "no change"}
+                        <strong style={{ color: kpi.staffDelta < 0 ? "#047857" : kpi.staffDelta > 0 ? "#dc2626" : undefined }}>
+                          {kpi.expectedTrucks > 0 && row.trucks !== kpi.expectedTrucks
+                            ? `${kpi.staffDelta > 0 ? "+" : "−"}${Math.abs(kpi.staffDelta).toFixed(2)} pts`
+                            : "no change"}
+                        </strong>
                       </td>
                     </tr>
                     <tr>
